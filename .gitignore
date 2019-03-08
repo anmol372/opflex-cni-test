@@ -1,2 +1,4 @@
+aci-containers
 .vagrant
 *.log
+__*

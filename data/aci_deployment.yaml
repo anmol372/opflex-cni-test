@@ -489,7 +489,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: aci-gbpserver
-          image: jojimt/gbpserver:debug
+          image: 1.100.201.1:5000/gbpserver:ci_test
           imagePullPolicy: Always
           volumeMounts:
             - name: kubeconfig

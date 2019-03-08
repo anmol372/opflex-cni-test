@@ -15,7 +15,7 @@ kubeadm init --apiserver-advertise-address=$IP --apiserver-cert-extra-sans=$IP -
 echo "Copying admin credendtials to vagrant user"
 sudo --user=vagrant mkdir -p /home/vagrant/.kube
 cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
-cp -i /etc/kubernetes/admin.conf /home/vagrant/data/kubeconfig
+cp /etc/kubernetes/admin.conf /home/vagrant/data/kubeconfig
 chown $(id -u vagrant):$(id -g vagrant) /home/vagrant/.kube/config
 
 echo "Creating kubeadm token for join"

@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 # nodes in cluster (excludes ecmp lb)
-num_nodes = 1
+num_nodes = 2
 
 # exported env vars
 http_proxy = ENV['HTTP_PROXY'] || ENV['http_proxy'] || ''
@@ -37,6 +37,11 @@ Environment="DOCKER_DNS_OPTIONS=\
     --dns-search default.svc.cluster.local --dns-search svc.cluster.local --dns-search noiro.lab  \
     --dns-opt ndots:2 --dns-opt timeout:2 --dns-opt attempts:2  \
 "
+EOF
+
+mkdir -p /etc/docker
+cat <<EOF >/etc/docker/daemon.json
+{ "insecure-registries":["1.100.201.1:5000"] }
 EOF
 
 SCRIPT
@@ -115,10 +120,7 @@ Vagrant.configure("2") do |config|
 
       if node[:roles] == "lb"
         # Add your adapter to this list for automated configuration
-        config.vm.network "public_network", type: "dhcp", bridge: [
-          "en1: Wi-Fi (AirPort)",
-          "wlp4s0",
-        ]
+        config.vm.network :private_network, ip: "1.201.201.201"
         config.vm.provision 'shell', path: 'scripts/provision_lb.sh', args: [master_ip, num_nodes]
       else
         config.vm.provision 'shell', path: 'scripts/provision_base.sh'
