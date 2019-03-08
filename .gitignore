@@ -2,3 +2,4 @@ aci-containers
 .vagrant
 *.log
 __*
+data/kubeconfig
