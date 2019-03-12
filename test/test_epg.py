@@ -119,11 +119,14 @@ class TestEPG(object):
         ip_6021 = createPod("pod-b6021")
 
         # verify ping fails across epgs
-        ping_cmd = ['ping', '-c', '3', ip_6020]
+        print("\nVerify ping failure across epgs")
+        ping_cmd = ['ping', '-c', '3', '-t', '1', ip_6020]
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
                       command=ping_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+        print("=>Resp is {}".format(resp))
         assert "0 packets received" in resp
 
+        print("\nVerify tcp contract")
         # verify port 6020 access from pod-a to epg-b
         cmd1 = ['nc', '-zvnw', '1', ip_6020, '6020']
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
