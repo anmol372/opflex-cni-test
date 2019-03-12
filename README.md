@@ -11,11 +11,12 @@ System tests for oplex-cni overlay.
 **Pre-requisites**
 
   A ubuntu machine with the following installed:
-    Virtual Box
-    Vagrant
-    Docker
-    dep
-    git
+  
+    - Virtual Box
+    - Vagrant
+    - Docker
+    - dep
+    - git
  
  To run, simply clone this repo and execute *./run.sh* from the root of the repo. Approximate run time is 16 minutes
  To clean up, execute *./cleanup.sh*
