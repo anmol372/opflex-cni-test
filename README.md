@@ -1,11 +1,12 @@
 # opflex-cni-test
 System tests for oplex-cni overlay. 
-  Pulls the aci-containers repo (currently only the demo branch)
-  Sets up a local docker registry
-  Builds inside a container
-  Pushes the artifacts to the local registry
-  Brings up a 3 node k8s vagrant cluster, set to use the local registry
-  Runs tests in the test directory inside a docker container.
+
+  - Pulls the aci-containers repo (currently only the demo branch)
+  - Sets up a local docker registry
+  - Builds inside a container
+  - Pushes the artifacts to the local registry
+  - Brings up a 3 node k8s vagrant cluster, set to use the local registry
+  - Runs tests in the test directory inside a docker container.
   
 ## How to run
 **Pre-requisites**
