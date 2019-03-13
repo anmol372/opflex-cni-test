@@ -11,7 +11,7 @@ System tests for oplex-cni overlay.
 ## How to run
 **Pre-requisites**
 
-  A ubuntu machine with the following installed:
+  A ubuntu machine(at least 16 cores, 128G recommended) with the following installed:
   
     - Virtual Box
     - Vagrant
@@ -23,6 +23,6 @@ System tests for oplex-cni overlay.
  To clean up, execute *./cleanup.sh*
  
  ## How to add tests
- Tests are run using pytests. New tests should be added in the test directory, following the pytest methodology.
+ Tests are run using pytest. New tests should be added in the test directory, following the pytest methodology.
  To re-run tests after the cluster has been set up, execute *./scripts/run_test.sh*
   
