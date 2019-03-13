@@ -99,7 +99,7 @@ class TestNetworkPolicy(object):
                 if len(backends) == 2:
                     break
             assert len(backends) == 2
-            print("backends: {}".format(backends))
+            print("backends: {}".format(backends.keys()))
 
         # apply networkpolicy allowing access only to prod
         createNsNetPol("default", "hostnames-allow-prod")
@@ -108,13 +108,13 @@ class TestNetworkPolicy(object):
         # wait for netpol to take effect
         def waiter():
             count = 0
-            for ix in range(0, 6):
+            for ix in range(0, 10):
                 resp1 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "dev",
                               command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
                 if "timed out" in resp1:
                     count += 1
 
-                if count == 6:
+                if count == 10:
                     return ""
             return "still accessible"
 

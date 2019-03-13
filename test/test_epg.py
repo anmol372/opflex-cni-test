@@ -95,21 +95,29 @@ class TestEPG(object):
         pod_list = k8s_api.list_namespaced_pod("default", label_selector="app=busybox")
         pod = next(iter(pod_list.items), None)
         assert pod != None
-        ping_cmd = ['ping', '-c', '3']
-        for ip in ips:
-            v1 = client.CoreV1Api()
-            cmd = list(ping_cmd)
-            cmd.append(ip)
-            resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, 'default',
-                          command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
-            print("=>Resp is {}".format(resp))
-            assert "3 packets received" in resp
+
+        print("\nVerify default connectivity")
+        def pingChecker():
+            ping_cmd = ['ping', '-c', '3']
+            for ip in ips:
+                v1 = client.CoreV1Api()
+                cmd = list(ping_cmd)
+                cmd.append(ip)
+                resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, 'default',
+                              command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
+                print("=>Resp is {}".format(resp))
+                if "3 packets received" not in resp:
+                    return "3 packets not received"
+            return ""
+
+        tutils.assertEventually(pingChecker, 1, 30)
 
         k8s_api.delete_namespaced_replication_controller("busybox", "default", client.V1DeleteOptions())
 
     def test_policy(object):
         v1 = client.CoreV1Api()
         createCRD("contracts", "tcp-6020")
+        sleep(1)
         createCRD("epgs", "epg-a")
         createCRD("epgs", "epg-b")
         # pod in epg-a
@@ -120,7 +128,7 @@ class TestEPG(object):
 
         # verify ping fails across epgs
         print("\nVerify ping failure across epgs")
-        ping_cmd = ['ping', '-c', '3', '-t', '1', ip_6020]
+        ping_cmd = ['ping', '-c', '6', '-t', '1', ip_6020]
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
                       command=ping_cmd, stderr=True, stdin=False, stdout=True, tty=False)
         print("=>Resp is {}".format(resp))

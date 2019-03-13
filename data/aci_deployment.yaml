@@ -324,7 +324,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: aci-containers-host
-          image: challa/aci-containers-host:final
+          image: 1.100.201.1:5000/aci-containers-host:ci_test
           imagePullPolicy: Always
           securityContext:
             capabilities:
