@@ -1,4 +1,18 @@
 #!/bin/bash
+
+if test -z "${GOPATH}"
+then
+    echo "GOPATH is not set. Verify go installation."
+    exit
+fi
+
+if [[ ! -d "${GOPATH}/src" ]];
+then
+    echo "Please create src directory in GOPATH."
+    exit
+fi
+
+cd "${GOPATH}/src"
 git clone https://github.com/noironetworks/aci-containers -b demo
 cd aci-containers
 dep ensure -v
