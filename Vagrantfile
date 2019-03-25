@@ -16,6 +16,9 @@ export http_proxy='#{http_proxy}'
 export https_proxy='#{https_proxy}'
 export no_proxy='#{no_proxy}',test-master,test-node1,test-node2,1.100.201.1,1.100.201.11,1.100.201.12,1.100.201.13
 EOF
+cat >>/etc/default/kubelet <<EOF
+KUBELET_EXTRA_ARGS="--node-ip=#[node:ip]"
+EOF
 source /etc/profile.d/envvar.sh
 mkdir -p /etc/systemd/system/docker.service.d
 cat <<EOF >/etc/systemd/system/docker.service.d/docker-options.conf
