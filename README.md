@@ -12,7 +12,8 @@ System tests for oplex-cni overlay.
 **Pre-requisites**
 
   A ubuntu machine(at least 16 cores, 128G recommended) with the following installed:
-  
+
+    - go
     - Virtual Box
     - Vagrant
     - Docker
