@@ -7,6 +7,10 @@ kubectl --kubeconfig=data/kubeconfig delete namespace dev prod
 kubectl --kubeconfig=data/kubeconfig delete svc hostnames-svc
 kubectl --kubeconfig=data/kubeconfig delete epg epg-a epg-b -n kube-system
 kubectl --kubeconfig=data/kubeconfig delete contract tcp-6020 -n kube-system
+for pod in $(kubectl --kubeconfig=data/kubeconfig get pods | grep Run | awk '{print $1}')
+do
+  kubectl --kubeconfig=data/kubeconfig delete pod $pod
+done
 kubectl --kubeconfig=data/kubeconfig get pods 2> /dev/stdout | grep "No resources found"
 while [[ $? -ne 0 ]]
 do

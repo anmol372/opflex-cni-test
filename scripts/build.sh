@@ -13,11 +13,15 @@ then
 fi
 
 cd "${GOPATH}/src"
-git clone https://github.com/noironetworks/aci-containers -b demo
+if [ -z "$SKIP_CLONE" ]
+then 
+  git clone https://github.com/noironetworks/aci-containers -b demo
+fi
 cd aci-containers
 dep ensure -v
 # fix etcd repo issue
 rm vendor/github.com/coreos/etcd/client/keys.generated.go
+rm -rf vendor/github.com/noironetworks/aci-containers
 make go-build
 export DOCKER_HUB_ID=1.100.201.1:5000
 make container-gbpserver
