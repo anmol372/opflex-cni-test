@@ -1,27 +1,9 @@
 #!/bin/bash
-
-if test -z "${GOPATH}"
-then
-    echo "GOPATH is not set. Verify go installation."
-    exit
-fi
-
-if [[ ! -d "${GOPATH}/src" ]];
-then
-    echo "Please create src directory in GOPATH."
-    exit
-fi
-
-cd "${GOPATH}/src"
 if [ -z "$SKIP_CLONE" ]
 then 
   git clone https://github.com/noironetworks/aci-containers -b demo
 fi
 cd aci-containers
-dep ensure -v
-# fix etcd repo issue
-rm vendor/github.com/coreos/etcd/client/keys.generated.go
-rm -rf vendor/github.com/noironetworks/aci-containers
 make go-build
 export DOCKER_HUB_ID=1.100.201.1:5000
 make container-gbpserver
