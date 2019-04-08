@@ -13,11 +13,9 @@ System tests for oplex-cni overlay.
 
   A ubuntu machine(at least 16 cores, 128G recommended) with the following installed:
 
-    - go
     - Virtual Box
     - Vagrant
     - Docker
-    - dep
     - git
  
  To run, simply clone this repo and execute *./run.sh* from the root of the repo. Approximate run time is 16 minutes
