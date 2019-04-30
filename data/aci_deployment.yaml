@@ -111,6 +111,7 @@ data:
     }
   host-agent-config: |-
     {
+        "ep-registry": "k8s",
         "log-level": "debug",
         "aci-vmm-type": "Kubernetes",
         "aci-vmm-domain": "kube",
@@ -253,9 +254,20 @@ rules:
   - ""
   resources:
   - nodes
+  - namespaces
   - pods
   - endpoints
   - services
+  - replicationcontrollers
+  verbs:
+  - list
+  - watch
+  - get
+- apiGroups:
+  - "apps"
+  resources:
+  - deployments
+  - replicasets
   verbs:
   - list
   - watch
@@ -267,6 +279,14 @@ rules:
   - podifs/status
   verbs:
   - "*"
+- apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - networkpolicies
+  verbs:
+  - list
+  - watch
+  - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -551,7 +571,7 @@ spec:
               mountPath: /kube
 
         - name: aci-containers-controller
-          image: challa/aci-containers-controller:final
+          image: 1.100.201.1:5000/aci-containers-controller:ci_test
           imagePullPolicy: Always
           volumeMounts:
             - name: controller-config-volume
