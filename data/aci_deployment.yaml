@@ -112,6 +112,7 @@ data:
   host-agent-config: |-
     {
         "ep-registry": "k8s",
+        "opflex-mode": "overlay",
         "log-level": "debug",
         "aci-vmm-type": "Kubernetes",
         "aci-vmm-domain": "kube",
