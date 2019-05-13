@@ -139,7 +139,7 @@ class TestEPG(object):
         cmd1 = ['nc', '-zvnw', '1', ip_6020, '6020']
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
                       command=cmd1, stderr=True, stdin=False, stdout=True, tty=False)
-        print("=>Resp is {}".format(resp))
+        print("=>pod-a to epg-b[6020] Resp is {}".format(resp))
         assert "open" in resp
 
         sleep(5)
@@ -147,14 +147,14 @@ class TestEPG(object):
         cmd2 = ['nc', '-zvnw', '1', ip_6021, '6021']
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
                       command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
-        print("=>Resp is {}".format(resp))
-        #assert "timed out" in resp
+        print("=>pod-a to epg-b[6021] Resp is {}".format(resp))
+        assert "timed out" in resp
 
         sleep(5)
         # verify port 6021 is accessible within epg-b
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-b6020", 'default',
                       command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
-        print("=>Resp is {}".format(resp))
+        print("=>pod-b6020 to pod-b[6021] Resp is {}".format(resp))
         assert "open" in resp
 
         v1.delete_namespaced_pod("pod-a", "default", client.V1DeleteOptions())
