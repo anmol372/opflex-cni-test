@@ -7,6 +7,8 @@ from os import path
 from time import sleep
 import yaml
 
+NAMESPACE="kube-system"
+
 configuration.assert_hostname = False
 config.load_kube_config()
 configuration.assert_hostname = False
@@ -22,7 +24,7 @@ def getPodIPs(kapi, ns, selector):
 def createNsSvc(ns, name):
     v1 = client.CoreV1Api()
     with open(path.abspath(nameToYaml(name))) as f:
-        svc_obj = yaml.load(f)
+        svc_obj = yaml.load(f, Loader=yaml.FullLoader)
         v1.create_namespaced_service(ns, svc_obj)
 
     s = v1.read_namespaced_service(name, ns)
@@ -52,6 +54,11 @@ class TestDNS(object):
     def test_nslookup(object):
         v1 = client.CoreV1Api()
         # use alpine because busybox nslookup seems broken
+        #import pdb; pdb.set_trace()
+        try:
+            v1.delete_namespaced_pod("alpine-pod", "default")
+        except:
+            pass
         createPod("alpine-pod")
 
         s = v1.read_namespaced_service("kubernetes", "default")
@@ -77,5 +84,7 @@ class TestDNS(object):
         svcIP = createNsSvc("default", "dns-test-svc")
         tutils.assertEventually(respChecker, 1, 30)
 
-        v1.delete_namespaced_pod("alpine-pod", "default", client.V1DeleteOptions())
-        v1.delete_namespaced_service("dns-test-svc", "default", client.V1DeleteOptions())
+        #v1.delete_namespaced_pod("alpine-pod", "default", client.V1DeleteOptions())
+        v1.delete_namespaced_pod("alpine-pod", "default")
+        #v1.delete_namespaced_service("dns-test-svc", "default", client.V1DeleteOptions())
+        v1.delete_namespaced_service("dns-test-svc", "default")
