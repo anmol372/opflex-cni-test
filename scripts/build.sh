@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ -z "$SKIP_CLONE" ]
 then 
-  git clone https://github.com/noironetworks/aci-containers -b demo
+  git clone https://github.com/noironetworks/aci-containers
 fi
 cd aci-containers
 make go-build
