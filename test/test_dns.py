@@ -60,6 +60,7 @@ class TestDNS(object):
         print("\nVerify nslookup")
         ns_lookup_cmd = ['nslookup', 'kubernetes']
         def respChecker():
+            print("===svcIP is {}".format(svcIP))
             resp = stream(v1.connect_get_namespaced_pod_exec, "alpine-pod", 'default',
                       command=ns_lookup_cmd, stderr=True, stdin=False, stdout=True, tty=False)
             if svcIP in resp:
@@ -67,15 +68,17 @@ class TestDNS(object):
                 print("=>Resp is {}".format(resp))
                 return ""
             else:
+                print("NR=>Resp is {}".format(resp))
                 return ""
                 #FIXME this is not reliable yet...
-                #return "kubernetes svc not resolved"
+                #return "svc not resolved {}".format(ns_lookup_cmd)
         
         tutils.assertEventually(respChecker, 1, 30)
 
         ns_lookup_cmd = ['nslookup', 'dns-test-svc']
         svcIP = createNsSvc("default", "dns-test-svc")
-        tutils.assertEventually(respChecker, 1, 30)
+        print("***svcIP is {}".format(svcIP))
+        tutils.assertEventually(respChecker, 1, 45)
 
         v1.delete_namespaced_pod("alpine-pod", "default", client.V1DeleteOptions())
         v1.delete_namespaced_service("dns-test-svc", "default", client.V1DeleteOptions())
