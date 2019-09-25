@@ -3,7 +3,7 @@ kind: Pod
 metadata:
   name: pod-b6020
   annotations:
-        "opflex.cisco.com/endpoint-group": '{"policy-space":"kube","name":"epg-b"}'
+        "opflex.cisco.com/endpoint-group": '{"policy-space":"defaultTenant","name":"epg-b"}'
 spec:
   containers:
   - name: pod-b6020

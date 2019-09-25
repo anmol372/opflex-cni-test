@@ -1,4 +1,5 @@
 #!/bin/bash
+export DEBIAN_FRONTEND=noninteractive
 
 POD_NETWORK_CIDR=$1
 NUM_NODES=$2
