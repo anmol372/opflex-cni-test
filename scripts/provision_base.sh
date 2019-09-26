@@ -18,13 +18,13 @@ echo "Allow vagrant user to run docker commands"
 usermod -aG docker vagrant
 
 echo "Installing kubeadm"
-apt-get install -y --force-yes apt-transport-https curl
+apt-get install -y apt-transport-https curl
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
 deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
 apt-get update
-apt-get install -y --force-yes kubelet kubeadm kubectl
+apt-get install -y kubelet kubeadm kubectl
 apt-mark hold kubelet kubeadm kubectl
 
 echo "Turn off swap"
