@@ -97,6 +97,21 @@ spec:
   scope: Namespaced
   version: v1
 ---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: gbpsstates.aci.aw
+spec:
+  group: aci.aw
+  names:
+    kind: GBPSState
+    listKind: GBPSStateList
+    plural: gbpsstates
+  scope: Namespaced
+  version: v1
+  subresources:
+    status: {}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -287,6 +302,13 @@ rules:
   - list
   - watch
   - get
+- apiGroups:
+  - "aci.aw"
+  resources:
+  - gbpsstates
+  - gbpsstates/status
+  verbs:
+  - '*'
 - apiGroups:
   - "apps"
   resources:
