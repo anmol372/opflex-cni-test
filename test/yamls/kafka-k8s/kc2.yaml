@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kc2
+spec:
+  containers:
+  - name: kc
+    image: 1.100.201.1:5000/kafka-client
+    imagePullPolicy: Always
+    command:
+       - /bin/bash
+       - -c
+       - "exec tail -f /dev/null"

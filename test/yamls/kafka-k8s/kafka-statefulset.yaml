@@ -3,20 +3,20 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: "unit-test-kafka"
+  name: "ut-kafka"
   labels:
     app.kubernetes.io/name: kafka
     helm.sh/chart: kafka-6.0.2
-    app.kubernetes.io/instance: unit-test
+    app.kubernetes.io/instance: ut
     app.kubernetes.io/managed-by: Tiller
     app.kubernetes.io/component: kafka
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: kafka
-      app.kubernetes.io/instance: unit-test
+      app.kubernetes.io/instance: ut
       app.kubernetes.io/component: kafka
-  serviceName: unit-test-kafka-headless
+  serviceName: ut-kafka-headless
   podManagementPolicy: "Parallel"
   replicas: 1
   updateStrategy:
@@ -24,11 +24,11 @@ spec:
   template:
     metadata:
       
-      name: "unit-test-kafka"
+      name: "ut-kafka"
       labels:
         app.kubernetes.io/name: kafka
         helm.sh/chart: kafka-6.0.2
-        app.kubernetes.io/instance: unit-test
+        app.kubernetes.io/instance: ut
         app.kubernetes.io/managed-by: Tiller
         app.kubernetes.io/component: kafka
     spec:      
@@ -43,6 +43,12 @@ spec:
           {}
           
         env:
+        - name: BASH_DEBUG
+          value: "1"
+        - name: NAMI_DEBUG
+          value: "1"
+        - name: NAMI_LOG_LEVEL
+          value: "trace8"
         - name: MY_POD_IP
           valueFrom:
             fieldRef:
@@ -52,15 +58,18 @@ spec:
             fieldRef:
               fieldPath: metadata.name
         - name: KAFKA_CFG_ZOOKEEPER_CONNECT
-          value: unit-test-zookeeper
+          value: ut-zookeeper
         - name: KAFKA_PORT_NUMBER
           value: "9092"
         - name: KAFKA_CFG_LISTENERS
-          value: "PLAINTEXT://:$(KAFKA_PORT_NUMBER)"
+          #value: "PLAINTEXT://:$(KAFKA_PORT_NUMBER)"
+          value: "SASL_SSL://:$(KAFKA_PORT_NUMBER)"
         - name: KAFKA_CFG_ADVERTISED_LISTENERS
-          value: 'PLAINTEXT://$(MY_POD_NAME).unit-test-kafka-headless.default.svc.cluster.local:$(KAFKA_PORT_NUMBER)'
+          value: 'SASL_SSL://$(MY_POD_NAME).ut-kafka-headless.default.svc.cluster.local:$(KAFKA_PORT_NUMBER)'
         - name: ALLOW_PLAINTEXT_LISTENER
           value: "yes"
+        - name: KAFKA_CERTIFICATE_PASSWORD
+          value: "UnitTest"
         - name: KAFKA_CFG_BROKER_ID
           value: "-1"
         - name: KAFKA_CFG_DELETE_TOPIC_ENABLE
@@ -92,7 +101,8 @@ spec:
         - name: KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
           value: "1"
         - name: KAFKA_CFG_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM
-          value: "https"
+          #value: "https"
+          value: ""
         - name: KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR
           value: "1"
         - name: KAFKA_CFG_NUM_IO_THREADS
@@ -133,14 +143,20 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /bitnami/kafka
+
+        - name: kafka-certificates
+          mountPath: /opt/bitnami/kafka/conf/certs/
+          readOnly: true
         
-        
-        
-      
       volumes:
         - name: data
           hostPath:
             path: /tmp
+
+        - name: kafka-certificates
+          secret:
+            secretName: kafka-certificates
+            defaultMode: 256
       
 #  volumeClaimTemplates:
 #    - metadata:
