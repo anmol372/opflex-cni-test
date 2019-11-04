@@ -69,9 +69,9 @@ class TestDNS(object):
                 return ""
             else:
                 print("NR=>Resp is {}".format(resp))
-                return ""
+                #return ""
                 #FIXME this is not reliable yet...
-                #return "svc not resolved {}".format(ns_lookup_cmd)
+                return "svc not resolved {}".format(ns_lookup_cmd)
         
         tutils.assertEventually(respChecker, 1, 30)
 

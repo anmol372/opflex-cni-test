@@ -95,6 +95,10 @@ class TestNetworkPolicy(object):
             for count in range(0, 30):
                 resp = stream(v1.connect_get_namespaced_pod_exec, "client-pod", ns,
                               command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
+                if resp == "":
+                    sleep(1)
+                    continue
+
                 backends[resp] = True
                 if len(backends) == 2:
                     break
@@ -113,6 +117,8 @@ class TestNetworkPolicy(object):
                               command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
                 if "timed out" in resp1:
                     count += 1
+                else:
+                    sleep(1)
 
                 if count == 10:
                     return ""
