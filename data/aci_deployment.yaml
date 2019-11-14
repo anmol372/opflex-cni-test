@@ -232,7 +232,23 @@ data:
   gbp-server-config: |-
     {
         "aci-policy-tenant": "defaultTenant",
-        "pod-subnet": "11.3.0.1/16"
+        "pod-subnet": "11.3.0.1/16",
+        "apic": {
+            "kafka": {
+                "brokers": [
+                              "ut-kafka-0.ut-kafka-headless.default.svc.cluster.local:9092"
+                           ],
+                "client-key-path": "/certs/kafka-client.key",
+                "client-cert-path": "/certs/kafka-client.crt",
+                "ca-cert-path": "/certs/ca.crt",
+                "topic": "clusterA",
+                "username": "user",
+                "password": "bitnami"
+            },
+           "cloud-info": {
+                "cluster-name": "clusterA"
+            }
+        }
     }
 ---
 apiVersion: v1
@@ -297,7 +313,6 @@ rules:
   resources:
   - epgs
   - contracts
-  - podifs
   verbs:
   - list
   - watch
@@ -305,6 +320,7 @@ rules:
 - apiGroups:
   - "aci.aw"
   resources:
+  - podifs
   - gbpsstates
   - gbpsstates/status
   verbs:
@@ -531,7 +547,8 @@ spec:
             - name: opflex-config-volume
               mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
         - name: opflex-server
-          image: challa/opflexserver:final
+          #image: challa/opflexserver:final
+          image: challa/opflex-server:merge
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -702,6 +719,8 @@ spec:
               mountPath: /kube
             - name: controller-config-volume
               mountPath: /usr/local/etc/aci-containers/
+            - name: kafka-certs
+              mountPath: /certs
           env:
             - name: GBP_SERVER_CONF
               value: /usr/local/etc/aci-containers/gbp-server.conf
@@ -725,6 +744,9 @@ spec:
         - name: aci-user-cert-volume
           secret:
             secretName: aci-user-cert
+        - name: kafka-certs
+          secret:
+            secretName: kafka-client-certificates
         - name: controller-config-volume
           configMap:
             name: aci-containers-config

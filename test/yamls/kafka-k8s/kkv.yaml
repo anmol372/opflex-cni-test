@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafkakv
+spec:
+  containers:
+  - name: kv
+    image: 1.100.201.1:5000/kafkakv
+    imagePullPolicy: Always
+    command:
+       - /bin/bash
+       - -c
+       - "exec tail -f /dev/null"
+    volumeMounts:
+      - name: kafka-certs
+        mountPath: /certs
+  volumes:
+  - name: kafka-certs
+    secret:
+      secretName: kafka-kv-certificates

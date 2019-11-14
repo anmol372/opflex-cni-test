@@ -1,4 +1,5 @@
 #!/bin/bash
+set e
 if [ -z "$SKIP_CLONE" ]
 then 
   git clone https://github.com/noironetworks/aci-containers
