@@ -1,0 +1,382 @@
+---
+# Source: kafka/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "ut-kafka"
+  labels:
+    app.kubernetes.io/name: kafka
+    helm.sh/chart: kafka-6.0.2
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: kafka
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: ut
+      app.kubernetes.io/component: kafka
+  serviceName: ut-kafka-headless
+  podManagementPolicy: "Parallel"
+  replicas: 1
+  updateStrategy:
+    type: "RollingUpdate"
+  template:
+    metadata:
+      
+      name: "ut-kafka"
+      labels:
+        app.kubernetes.io/name: kafka
+        helm.sh/chart: kafka-6.0.2
+        app.kubernetes.io/instance: ut
+        app.kubernetes.io/managed-by: Tiller
+        app.kubernetes.io/component: kafka
+    spec:      
+      hostNetwork: true
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
+      containers:
+      - name: kafka
+        image: "docker.io/bitnami/kafka:2.3.0-debian-9-r88"
+        imagePullPolicy: "IfNotPresent"
+        resources:
+          {}
+          
+        env:
+        - name: BASH_DEBUG
+          value: "1"
+        - name: NAMI_DEBUG
+          value: "1"
+        - name: NAMI_LOG_LEVEL
+          value: "trace8"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KAFKA_CFG_ZOOKEEPER_CONNECT
+          value: ut-zookeeper
+        - name: KAFKA_PORT_NUMBER
+          value: "9092"
+        - name: KAFKA_CFG_LISTENERS
+          #value: "PLAINTEXT://:$(KAFKA_PORT_NUMBER)"
+          value: "SASL_SSL://:$(KAFKA_PORT_NUMBER)"
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: 'SASL_SSL://$(MY_POD_NAME).ut-kafka-headless.default.svc.cluster.local:$(KAFKA_PORT_NUMBER)'
+        - name: ALLOW_PLAINTEXT_LISTENER
+          value: "yes"
+        - name: KAFKA_CERTIFICATE_PASSWORD
+          value: "UnitTest"
+        - name: KAFKA_CFG_BROKER_ID
+          value: "-1"
+        - name: KAFKA_CFG_DELETE_TOPIC_ENABLE
+          value: "false"
+        - name: KAFKA_HEAP_OPTS
+          value: "-Xmx1024m -Xms1024m"
+        - name: KAFKA_CFG_LOG_FLUSH_INTERVAL_MESSAGES
+          value: "10000"
+        - name: KAFKA_CFG_LOG_FLUSH_INTERVAL_MS
+          value: "1000"
+        - name: KAFKA_CFG_LOG_RETENTION_BYTES
+          value: "1073741824"
+        - name: KAFKA_CFG_LOG_RETENTION_CHECK_INTERVALS_MS
+          value: "300000"
+        - name: KAFKA_CFG_LOG_RETENTION_HOURS
+          value: "168"
+        - name: KAFKA_CFG_LOG_MESSAGE_FORMAT_VERSION
+          value: ""
+        - name: KAFKA_CFG_MESSAGE_MAX_BYTES
+          value: "1000012"
+        - name: KAFKA_CFG_LOG_SEGMENT_BYTES
+          value: "1073741824"
+        - name: KAFKA_CFG_LOG_DIRS
+          value: /bitnami/kafka/data
+        - name: KAFKA_CFG_DEFAULT_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_CFG_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM
+          #value: "https"
+          value: ""
+        - name: KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"
+        - name: KAFKA_CFG_NUM_IO_THREADS
+          value: "8"
+        - name: KAFKA_CFG_NUM_NETWORK_THREADS
+          value: "3"
+        - name: KAFKA_CFG_NUM_PARTITIONS
+          value: "1"
+        - name: KAFKA_CFG_NUM_RECOVERY_THREADS_PER_DATA_DIR
+          value: "1"
+        - name: KAFKA_CFG_SOCKET_RECEIVE_BUFFER_BYTES
+          value: "102400"
+        - name: KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES
+          value: "104857600"
+        - name: KAFKA_CFG_SOCKET_SEND_BUFFER_BYTES
+          value: "102400"
+        - name: KAFKA_CFG_ZOOKEEPER_CONNECTION_TIMEOUT_MS
+          value: "6000"
+        ports:
+        - name: kafka
+          containerPort: 9092
+        livenessProbe:
+          tcpSocket:
+            port: kafka
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 2
+        readinessProbe:
+          tcpSocket:
+            port: kafka
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+        volumeMounts:
+        - name: data
+          mountPath: /bitnami/kafka
+
+        - name: kafka-certificates
+          mountPath: /opt/bitnami/kafka/conf/certs/
+          readOnly: true
+        
+      volumes:
+        - name: data
+          hostPath:
+            path: /tmp
+
+        - name: kafka-certificates
+          secret:
+            secretName: kafka-certificates
+            defaultMode: 256
+      nodeName: test-node1
+---
+# Source: kafka/templates/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ut-kafka-headless
+  labels:
+    app.kubernetes.io/name: kafka
+    helm.sh/chart: kafka-6.0.2
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: kafka
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: kafka
+    port: 9092
+    targetPort: kafka
+  selector:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/component: kafka
+---
+# Source: kafka/templates/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ut-kafka
+  labels:
+    app.kubernetes.io/name: kafka
+    helm.sh/chart: kafka-6.0.2
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: kafka
+  annotations:
+spec:
+  type: ClusterIP
+  clusterIP: 10.96.0.9
+  ports:
+  - name: kafka
+    port: 9092
+    targetPort: kafka
+  selector:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/component: kafka
+---
+# Source: kafka/charts/zookeeper/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "ut-zookeeper"
+  labels:
+    app.kubernetes.io/name: zookeeper
+    helm.sh/chart: zookeeper-5.0.1
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: zookeeper
+spec:
+  serviceName: ut-zookeeper-headless
+  replicas: 1
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zookeeper
+      app.kubernetes.io/instance: ut
+      app.kubernetes.io/component: zookeeper
+  template:
+    metadata:
+      name: "ut-zookeeper"
+      labels:
+        app.kubernetes.io/name: zookeeper
+        helm.sh/chart: zookeeper-5.0.1
+        app.kubernetes.io/instance: ut
+        app.kubernetes.io/component: zookeeper
+    spec:      
+      hostNetwork: true
+      securityContext:
+        fsGroup: 1001
+      containers:
+      - name: zookeeper
+        image: "docker.io/bitnami/zookeeper:3.5.5-debian-9-r96"
+        imagePullPolicy: "IfNotPresent"
+        securityContext:
+          runAsUser: 1001
+        command:
+         - bash
+         - -ec
+         - |
+            # Execute entrypoint as usual after obtaining ZOO_SERVER_ID based on POD hostname
+            #HOSTNAME=`hostname -s`
+            #if [[ $HOSTNAME =~ (.*)-([0-9]+)$ ]]; then
+            #  ORD=${BASH_REMATCH[2]}
+            #  export ZOO_SERVER_ID=$((ORD+1))
+            #else
+            #  echo "Failed to get index from hostname $HOST"
+            #  exit 1
+            #fi
+            export ZOO_SERVER_ID=1
+            exec /entrypoint.sh /run.sh
+        resources: 
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          
+        env:
+        - name: ZOO_PORT_NUMBER
+          value: "2181"
+        - name: ZOO_TICK_TIME
+          value: "2000"
+        - name: ZOO_INIT_LIMIT
+          value: "10"
+        - name: ZOO_SYNC_LIMIT
+          value: "5"
+        - name: ZOO_MAX_CLIENT_CNXNS
+          value: "60"
+        - name: ZOO_4LW_COMMANDS_WHITELIST
+          value: "srvr, mntr"
+        - name: ZOO_SERVERS
+          value: ut-zookeeper-0.ut-zookeeper-headless.default.svc.cluster.local:2888:3888 
+        - name: ZOO_ENABLE_AUTH
+          value: "no"
+        - name: ZOO_HEAP_SIZE
+          value: "1024"
+        - name: ZOO_LOG_LEVEL
+          value: "ERROR"
+        - name: ALLOW_ANONYMOUS_LOGIN
+          value: "yes"
+        ports:
+        - name: client
+          containerPort: 2181
+        - name: follower
+          containerPort: 2888
+        - name: election
+          containerPort: 3888
+        livenessProbe:
+          tcpSocket:
+            port: client
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+        readinessProbe:
+          tcpSocket:
+            port: client
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+        volumeMounts:
+        - name: data
+          mountPath: /bitnami/zookeeper
+      volumes:
+      - name: data
+        hostPath:
+          path: /tmp
+      nodeName: test-node1
+---
+# Source: kafka/charts/zookeeper/templates/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ut-zookeeper-headless
+  labels:
+    app.kubernetes.io/name: zookeeper
+    helm.sh/chart: zookeeper-5.0.1
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: zookeeper
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+  - name: client
+    port: 2181
+    targetPort: client
+  - name: follower
+    port: 2888
+    targetPort: follower
+  - name: election
+    port: 3888
+    targetPort: election
+  selector:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/component: zookeeper
+---
+# Source: kafka/charts/zookeeper/templates/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ut-zookeeper
+  labels:
+    app.kubernetes.io/name: zookeeper
+    helm.sh/chart: zookeeper-5.0.1
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: zookeeper
+spec:
+  type: ClusterIP
+  clusterIP: 10.96.0.8
+  ports:
+  - name: client
+    port: 2181
+    targetPort: client
+  - name: follower
+    port: 2888
+    targetPort: follower
+  - name: election
+    port: 3888
+    targetPort: election
+  selector:
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/component: zookeeper

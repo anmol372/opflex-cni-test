@@ -1,4 +1,5 @@
 import pytest
+import logging
 import tutils
 from kubernetes import client, config, utils
 from kubernetes.stream import stream
@@ -7,6 +8,7 @@ from os import path
 from time import sleep
 import yaml
 
+tutils.logSetup()
 configuration.assert_hostname = False
 config.load_kube_config()
 configuration.assert_hostname = False
@@ -52,32 +54,35 @@ class TestDNS(object):
     def test_nslookup(object):
         v1 = client.CoreV1Api()
         # use alpine because busybox nslookup seems broken
+        tutils.tcLog("Create a dns client pod")
         createPod("alpine-pod")
 
         s = v1.read_namespaced_service("kubernetes", "default")
         svcIP = s.spec.cluster_ip
         # verify ping fails across epgs
         print("\nVerify nslookup")
+        tutils.tcLog("Verify dns lookup of kubernetes service")
         ns_lookup_cmd = ['nslookup', 'kubernetes']
         def respChecker():
-            print("===svcIP is {}".format(svcIP))
+            logging.debug("===svcIP is {}".format(svcIP))
             resp = stream(v1.connect_get_namespaced_pod_exec, "alpine-pod", 'default',
                       command=ns_lookup_cmd, stderr=True, stdin=False, stdout=True, tty=False)
             if svcIP in resp:
-                print("=>command {}".format(ns_lookup_cmd))
-                print("=>Resp is {}".format(resp))
+                logging.debug("=>command {}".format(ns_lookup_cmd))
+                logging.debug("=>Resp is {}".format(resp))
                 return ""
             else:
-                print("NR=>Resp is {}".format(resp))
+                logging.debug("NR=>Resp is {}".format(resp))
                 #return ""
                 #FIXME this is not reliable yet...
                 return "svc not resolved {}".format(ns_lookup_cmd)
         
         tutils.assertEventually(respChecker, 1, 30)
 
+        tutils.tcLog("Create a service and check dns resolution")
         ns_lookup_cmd = ['nslookup', 'dns-test-svc']
         svcIP = createNsSvc("default", "dns-test-svc")
-        print("***svcIP is {}".format(svcIP))
+        logging.info("***svcIP is {}".format(svcIP))
         tutils.assertEventually(respChecker, 1, 45)
 
         v1.delete_namespaced_pod("alpine-pod", "default", client.V1DeleteOptions())

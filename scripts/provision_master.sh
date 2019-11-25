@@ -29,8 +29,21 @@ sudo mkdir -p /kubeconfig
 sudo chmod 777 /kubeconfig
 kubectl config view > /kubeconfig/kube.yaml
 
+echo "Configuring kafka secrets"
+CERT_DIR=/home/vagrant/data/kafka-k8s/tls-certs
+pushd ${CERT_DIR}
+
+kubectl create secret generic kafka-certificates --from-file=${CERT_DIR}/kafka.keystore.jks --from-file=./kafka.truststore.jks
+
+kubectl create secret generic kafka-client-certificates --from-file=./ca.crt --from-file=./kafka-client.crt --from-file=./kafka-client.key -n kube-system
+
+kubectl create secret generic kafka-kv-certificates --from-file=./ca.crt --from-file=./kafka-client.crt --from-file=./kafka-client.key
+
+popd
+
 echo "Configuring aci cni"
 kubectl apply -f /home/vagrant/data/aci_deployment.yaml
+
 
 echo "Changing kube-proxy to use 1.100.201.0/24 for NODE_PORT masquerade"
 kubectl get daemonset kube-proxy -n kube-system  -o yaml > /tmp/kp.yaml

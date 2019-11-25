@@ -86,7 +86,7 @@ nodemap = [
 ]
 
 master_ip = '1.100.201.11'
-pod_network_cidr = '10.2.56.1/21'
+pod_network_cidr = '11.3.0.0/16'
 count = 0
 
 Vagrant.configure("2") do |config|

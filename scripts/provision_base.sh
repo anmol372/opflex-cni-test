@@ -39,4 +39,7 @@ echo "Setup node for clear text ssh"
 sed -i "/^[^#]*PasswordAuthentication[[:space:]]no/c\PasswordAuthentication yes" /etc/ssh/sshd_config
 service sshd restart
 
+echo "10.96.0.9  ut-kafka-0.ut-kafka-headless.default.svc.cluster.local" >> /etc/hosts
+echo "10.96.0.8  ut-zookeeper" >> /etc/hosts
+
 echo "Done provisioning $HOST_NAME"

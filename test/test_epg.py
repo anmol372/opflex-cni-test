@@ -1,5 +1,6 @@
 import pytest
 import tutils
+import logging
 from kubernetes import client, config, utils
 from kubernetes.stream import stream
 from kubernetes.client import configuration
@@ -7,6 +8,7 @@ from os import path
 from time import sleep
 import yaml
 
+tutils.logSetup()
 configuration.assert_hostname = False
 config.load_kube_config()
 configuration.assert_hostname = False
@@ -16,7 +18,7 @@ def checkRCStatus(kapi, replicas):
     s = kapi.read_namespaced_replication_controller_status("busybox", "default")
     if s.status.ready_replicas == replicas:
         return ""
-    print("Not ready yet...")
+    logging.debug("busybox: Not ready yet...")
     return "Expected {} ready replicas, got {}".format(replicas, s.status.ready_replicas)
 
 def getPodIPs(kapi, ns, selector):
@@ -66,9 +68,27 @@ def deleteCRD(plural, name):
     body = client.V1DeleteOptions()
     crd_api.delete_namespaced_custom_object("aci.aw", "v1", "kube-system", plural, name, body)
 
+def scaleRc(name, replicas):
+    v1 = client.CoreV1Api()
+    scale = v1.read_namespaced_replication_controller_scale(name, "default")
+    scale.spec.replicas = replicas
+    resp = v1.replace_namespaced_replication_controller_scale(name, "default", scale)
+    def scaleChecker():
+        curr = v1.read_namespaced_replication_controller_scale(name, "default")
+        if curr.spec.replicas is None and replicas == 0:
+            return ""
+
+        if curr.spec.replicas == replicas:
+            return ""
+
+        return "expected {} replicas, got {}".format(replicas, curr.spec.replicas)
+
+    tutils.assertEventually(scaleChecker, 1, 30)
+
 class TestEPG(object):
 
     def test_default(object):
+        tutils.tcLog("Create 3 pods in default epg")
         k8s_api = utils.create_from_yaml(k8s_client, "yamls/busybox.yaml")
 
         # check rc is ready
@@ -96,7 +116,7 @@ class TestEPG(object):
         pod = next(iter(pod_list.items), None)
         assert pod != None
 
-        print("\nVerify default connectivity")
+        tutils.tcLog("Verify default connectivity")
         def pingChecker():
             ping_cmd = ['ping', '-c', '3']
             for ip in ips:
@@ -105,13 +125,15 @@ class TestEPG(object):
                 cmd.append(ip)
                 resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, 'default',
                               command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
-                print("=>Resp is {}".format(resp))
+                logging.debug("=>Resp is {}".format(resp))
                 if "3 packets received" not in resp:
                     return "3 packets not received"
             return ""
 
         tutils.assertEventually(pingChecker, 1, 30)
 
+        tutils.tcLog("Delete pods")
+        scaleRc("busybox", 0)
         k8s_api.delete_namespaced_replication_controller("busybox", "default", client.V1DeleteOptions())
 
     def test_policy(object):
@@ -127,39 +149,46 @@ class TestEPG(object):
         ip_6021 = createPod("pod-b6021")
 
         # verify ping fails across epgs
-        print("\nVerify ping failure across epgs")
+        tutils.tcLog("Verify ping failure across epgs")
         ping_cmd = ['ping', '-c', '6', '-t', '1', ip_6020]
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
                       command=ping_cmd, stderr=True, stdin=False, stdout=True, tty=False)
-        print("=>Resp is {}".format(resp))
+        logging.debug("=>Resp is {}".format(resp))
         assert "0 packets received" in resp
 
-        print("\nVerify tcp contract")
+        tutils.tcLog("Verify tcp contract")
         # verify port 6020 access from pod-a to epg-b
+        tutils.tcLog("port 6020 access from pod-a to epg-b")
         cmd1 = ['nc', '-zvnw', '1', ip_6020, '6020']
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
                       command=cmd1, stderr=True, stdin=False, stdout=True, tty=False)
-        print("=>pod-a to epg-b[6020] Resp is {}".format(resp))
+        logging.debug("=>pod-a to epg-b[6020] Resp is {}".format(resp))
         assert "open" in resp
 
         sleep(5)
         # verify port 6021 is inaccessible from pod-a to epg-b
+        tutils.tcLog("port 6021 deny from pod-a to epg-b")
         cmd2 = ['nc', '-zvnw', '1', ip_6021, '6021']
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
                       command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
-        print("=>pod-a to epg-b[6021] Resp is {}".format(resp))
+        logging.debug("=>pod-a to epg-b[6021] Resp is {}".format(resp))
         assert "timed out" in resp
 
         sleep(5)
         # verify port 6021 is accessible within epg-b
+        tutils.tcLog("port 6021 accessible within epg-b")
         resp = stream(v1.connect_get_namespaced_pod_exec, "pod-b6020", 'default',
                       command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
-        print("=>pod-b6020 to pod-b[6021] Resp is {}".format(resp))
+        logging.debug("=>pod-b6020 to pod-b[6021] Resp is {}".format(resp))
         assert "open" in resp
 
-        v1.delete_namespaced_pod("pod-a", "default", client.V1DeleteOptions())
-        v1.delete_namespaced_pod("pod-b6020", "default", client.V1DeleteOptions())
-        v1.delete_namespaced_pod("pod-b6021", "default", client.V1DeleteOptions())
+        toDelete = ["pod-a", "pod-b6020", "pod-b6021"]
+        logging.info("Deleting {}\n".format(toDelete))
+        for pod in toDelete:
+            v1.delete_namespaced_pod(pod, "default", client.V1DeleteOptions())
+        for pod in toDelete:
+            tutils.checkPodDeleted(v1, "default", pod, 60)
+
         deleteCRD("contracts", "tcp-6020")
         deleteCRD("epgs", "epg-a")
         deleteCRD("epgs", "epg-b")

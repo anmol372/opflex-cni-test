@@ -1,7 +1,10 @@
 import pytest
+import tutils
+import logging
 from time import sleep
 from kubernetes import client, config
 
+tutils.logSetup()
 config.load_kube_config()
 v1 = client.CoreV1Api()
 
@@ -25,4 +28,5 @@ def checkPodStatus():
 
 class TestBasic(object):
     def test_cni_status(object):
+        tutils.tcLog("Verify status of system pods")
         assertEventually(checkPodStatus, 1, 90)

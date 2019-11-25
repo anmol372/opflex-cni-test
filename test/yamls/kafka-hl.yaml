@@ -1,0 +1,22 @@
+# Source: kafka/templates/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ut-kafka-headless
+  labels:
+    app.kubernetes.io/name: kafka
+    helm.sh/chart: kafka-6.0.2
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: kafka
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: kafka
+    port: 9092
+    targetPort: kafka
+  selector:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/component: kafka

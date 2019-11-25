@@ -233,6 +233,7 @@ data:
     {
         "aci-policy-tenant": "defaultTenant",
         "pod-subnet": "11.3.0.1/16",
+        "push-json-file": true,
         "apic": {
             "kafka": {
                 "brokers": [
@@ -561,6 +562,8 @@ spec:
           volumeMounts:
             - name: opflex-server-config-volume
               mountPath: /usr/local/etc/opflex-server
+          args:
+          - "--grpc_address=1.100.201.11:19999 --level=debug2"
         - name: mcast-daemon
           image: challa/opflex:final
           command: ["/bin/sh"]
@@ -713,6 +716,7 @@ spec:
       containers:
         - name: aci-gbpserver
           image: 1.100.201.1:5000/gbp-server:ci_test
+#          image: challa/gbp-server:merge
           imagePullPolicy: Always
           volumeMounts:
             - name: kubeconfig
@@ -755,3 +759,4 @@ spec:
                 path: controller.conf
               - key: gbp-server-config
                 path: gbp-server.conf
+      nodeName: test-master

@@ -1,5 +1,6 @@
 import pytest
 import tutils
+import logging
 from kubernetes import client, config, utils
 from kubernetes.stream import stream
 from kubernetes.client import configuration
@@ -7,6 +8,7 @@ from os import path
 from time import sleep
 import yaml
 
+tutils.logSetup()
 configuration.assert_hostname = False
 config.load_kube_config()
 configuration.assert_hostname = False
@@ -82,12 +84,12 @@ class TestNetworkPolicy(object):
         nsList = ["prod", "dev"]
         for ns in nsList:
             createNs(ns)
-        print("\nWaiting for namespaces to be available")
+        logging.info("\nWaiting for namespaces to be available")
         sleep(3)
         for ns in nsList:
             createNsPod(ns, "client-pod")
         
-        print("\nVerify loadbalancing")
+        tutils.tcLog("Verify loadbalancing")
         # verify both clients can access the service, and the service load balances.
         for ns in nsList:
             cmd = ['curl', '--connect-timeout', '1', '-s', svcIP]
@@ -103,7 +105,7 @@ class TestNetworkPolicy(object):
                 if len(backends) == 2:
                     break
             assert len(backends) == 2
-            print("backends: {}".format(backends.keys()))
+            logging.info("backends: {}".format(backends.keys()))
 
         # apply networkpolicy allowing access only to prod
         createNsNetPol("default", "hostnames-allow-prod")
@@ -124,7 +126,7 @@ class TestNetworkPolicy(object):
                     return ""
             return "still accessible"
 
-        print("\nVerify k8s network policy")
+        tutils.tcLog("Verify k8s network policy")
         tutils.assertEventually(waiter, 1, 5)
 
         # verify prod can access the svc
@@ -132,14 +134,14 @@ class TestNetworkPolicy(object):
             cmd2 = ['nc', '-zvnw', '1', svcIP, '80']
             resp2 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "prod",
                           command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
-            print("prod: {}".format(resp2))
+            logging.debug("prod: {}".format(resp2))
             assert "open" in resp2
 
         # and dev can't
         for ix in range(0, 5):
             resp3 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "dev",
                           command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
-            print("dev: {}".format(resp3))
+            logging.debug("dev: {}".format(resp3))
             assert "timed out" in resp3
 
         # delete everything

@@ -1,0 +1,161 @@
+---
+# Source: kafka/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "ut-kafka"
+  labels:
+    app.kubernetes.io/name: kafka
+    helm.sh/chart: kafka-6.0.2
+    app.kubernetes.io/instance: ut
+    app.kubernetes.io/managed-by: Tiller
+    app.kubernetes.io/component: kafka
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: ut
+      app.kubernetes.io/component: kafka
+  serviceName: ut-kafka-headless
+  podManagementPolicy: "Parallel"
+  replicas: 1
+  updateStrategy:
+    type: "RollingUpdate"
+  template:
+    metadata:
+      
+      name: "ut-kafka"
+      labels:
+        app.kubernetes.io/name: kafka
+        helm.sh/chart: kafka-6.0.2
+        app.kubernetes.io/instance: ut
+        app.kubernetes.io/managed-by: Tiller
+        app.kubernetes.io/component: kafka
+    spec:      
+      hostNetwork: true
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
+      containers:
+      - name: kafka
+        image: "docker.io/bitnami/kafka:2.3.0-debian-9-r88"
+        imagePullPolicy: "IfNotPresent"
+        resources:
+          {}
+          
+        env:
+        - name: BASH_DEBUG
+          value: "1"
+        - name: NAMI_DEBUG
+          value: "1"
+        - name: NAMI_LOG_LEVEL
+          value: "trace8"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KAFKA_CFG_ZOOKEEPER_CONNECT
+          value: ut-zookeeper
+        - name: KAFKA_PORT_NUMBER
+          value: "9092"
+        - name: KAFKA_CFG_LISTENERS
+          #value: "PLAINTEXT://:$(KAFKA_PORT_NUMBER)"
+          value: "SASL_SSL://:$(KAFKA_PORT_NUMBER)"
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: 'SASL_SSL://$(MY_POD_NAME).ut-kafka-headless.default.svc.cluster.local:$(KAFKA_PORT_NUMBER)'
+        - name: ALLOW_PLAINTEXT_LISTENER
+          value: "yes"
+        - name: KAFKA_CERTIFICATE_PASSWORD
+          value: "UnitTest"
+        - name: KAFKA_CFG_BROKER_ID
+          value: "-1"
+        - name: KAFKA_CFG_DELETE_TOPIC_ENABLE
+          value: "false"
+        - name: KAFKA_HEAP_OPTS
+          value: "-Xmx1024m -Xms1024m"
+        - name: KAFKA_CFG_LOG_FLUSH_INTERVAL_MESSAGES
+          value: "10000"
+        - name: KAFKA_CFG_LOG_FLUSH_INTERVAL_MS
+          value: "1000"
+        - name: KAFKA_CFG_LOG_RETENTION_BYTES
+          value: "1073741824"
+        - name: KAFKA_CFG_LOG_RETENTION_CHECK_INTERVALS_MS
+          value: "300000"
+        - name: KAFKA_CFG_LOG_RETENTION_HOURS
+          value: "168"
+        - name: KAFKA_CFG_LOG_MESSAGE_FORMAT_VERSION
+          value: ""
+        - name: KAFKA_CFG_MESSAGE_MAX_BYTES
+          value: "1000012"
+        - name: KAFKA_CFG_LOG_SEGMENT_BYTES
+          value: "1073741824"
+        - name: KAFKA_CFG_LOG_DIRS
+          value: /bitnami/kafka/data
+        - name: KAFKA_CFG_DEFAULT_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_CFG_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM
+          #value: "https"
+          value: ""
+        - name: KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"
+        - name: KAFKA_CFG_NUM_IO_THREADS
+          value: "8"
+        - name: KAFKA_CFG_NUM_NETWORK_THREADS
+          value: "3"
+        - name: KAFKA_CFG_NUM_PARTITIONS
+          value: "1"
+        - name: KAFKA_CFG_NUM_RECOVERY_THREADS_PER_DATA_DIR
+          value: "1"
+        - name: KAFKA_CFG_SOCKET_RECEIVE_BUFFER_BYTES
+          value: "102400"
+        - name: KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES
+          value: "104857600"
+        - name: KAFKA_CFG_SOCKET_SEND_BUFFER_BYTES
+          value: "102400"
+        - name: KAFKA_CFG_ZOOKEEPER_CONNECTION_TIMEOUT_MS
+          value: "6000"
+        ports:
+        - name: kafka
+          containerPort: 9092
+        livenessProbe:
+          tcpSocket:
+            port: kafka
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 2
+        readinessProbe:
+          tcpSocket:
+            port: kafka
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+        volumeMounts:
+        - name: data
+          mountPath: /bitnami/kafka
+
+        - name: kafka-certificates
+          mountPath: /opt/bitnami/kafka/conf/certs/
+          readOnly: true
+        
+      volumes:
+        - name: data
+          hostPath:
+            path: /tmp
+
+        - name: kafka-certificates
+          secret:
+            secretName: kafka-certificates
+            defaultMode: 256
+      nodeName: test-node1
