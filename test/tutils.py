@@ -46,3 +46,35 @@ def checkPodDeleted(kapi, ns, name, timeout=30):
         return ""
 
     assertEventually(deleteChecker, 1, timeout)
+
+def scaleRc(name, replicas, ns="default"):
+    v1 = client.CoreV1Api()
+    scale = v1.read_namespaced_replication_controller_scale(name, ns)
+    scale.spec.replicas = replicas
+    resp = v1.replace_namespaced_replication_controller_scale(name, ns, scale)
+    rcCheckScale(name, replicas, ns)
+
+def rcCheckScale(name, replicas, ns="default"):
+    v1 = client.CoreV1Api()
+    def scaleChecker():
+        curr = v1.read_namespaced_replication_controller_status(name, ns)
+        if curr.status.ready_replicas is None and replicas == 0:
+            return ""
+
+        if curr.status.ready_replicas == replicas:
+            return ""
+
+        return "expected {} replicas, got {}".format(replicas, curr.status.ready_replicas)
+
+    assertEventually(scaleChecker, 1, 30)
+
+def checkPodsRemoved(selector, ns="default"):
+    v1 = client.CoreV1Api()
+    def checker():
+        resp = v1.list_namespaced_pod(ns, label_selector=selector)
+        if len(resp.items) == 0:
+            return ""
+
+        return "{} pods still present".format(len(resp.items))
+
+    assertEventually(checker, 1, 45)

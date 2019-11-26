@@ -68,23 +68,6 @@ def deleteCRD(plural, name):
     body = client.V1DeleteOptions()
     crd_api.delete_namespaced_custom_object("aci.aw", "v1", "kube-system", plural, name, body)
 
-def scaleRc(name, replicas):
-    v1 = client.CoreV1Api()
-    scale = v1.read_namespaced_replication_controller_scale(name, "default")
-    scale.spec.replicas = replicas
-    resp = v1.replace_namespaced_replication_controller_scale(name, "default", scale)
-    def scaleChecker():
-        curr = v1.read_namespaced_replication_controller_scale(name, "default")
-        if curr.spec.replicas is None and replicas == 0:
-            return ""
-
-        if curr.spec.replicas == replicas:
-            return ""
-
-        return "expected {} replicas, got {}".format(replicas, curr.spec.replicas)
-
-    tutils.assertEventually(scaleChecker, 1, 30)
-
 class TestEPG(object):
 
     def test_default(object):
@@ -133,7 +116,7 @@ class TestEPG(object):
         tutils.assertEventually(pingChecker, 1, 30)
 
         tutils.tcLog("Delete pods")
-        scaleRc("busybox", 0)
+        tutils.scaleRc("busybox", 0)
         k8s_api.delete_namespaced_replication_controller("busybox", "default", client.V1DeleteOptions())
 
     def test_policy(object):

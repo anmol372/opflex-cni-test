@@ -155,29 +155,39 @@ class TestKafkaInterface(object):
         toCheck = []
         toCheck.append(epID)
         kafkaChecker(toCheck, "found")
-        tutils.tcLog("Deleting a pod and checking removal from kafka")
+        tutils.tcLog("Delete a pod and check removal from kafka")
         k8s_api.delete_namespaced_pod("alpine-pod", "default", client.V1DeleteOptions())
         kafkaChecker(toCheck, "missing", 8)
 
-        tutils.tcLog("Rechecking ep sync between k8s and kafka")
+        tutils.tcLog("Recheck ep sync between k8s and kafka")
         kafkaSyncChecker(initialEPList)
+        tutils.tcLog("Add more endpoints")
+        utils.create_from_yaml(k8s_client, "yamls/busybox.yaml")
+        tutils.rcCheckScale("busybox", 3)
+        tutils.tcLog("Get new eplist from k8s")
+        EPList1 = readCniEPList()
+        assert EPList1 != initialEPList
+        tutils.tcLog("Recheck ep sync between k8s and kafka")
+        kafkaSyncChecker(EPList1)
 
         tutils.tcLog("Bring controller down")
         scaleDep("kube-system", "aci-containers-controller", 0)
         sleep(10)
         tutils.tcLog("Change some endpoints")
-        scaleDep("kube-system", "coredns", 0)
-        sleep(5)
-        scaleDep("kube-system", "coredns", 2)
+        tutils.scaleRc("busybox", 0)
+        tutils.checkPodsRemoved("app=busybox")
+        EPList2 = readCniEPList()
+        assert EPList2 != EPList1
+        tutils.scaleRc("busybox", 2)
         sleep(5)
 
-        logging.info("initial ep list:{}".format(initialEPList))
-        newEPList = readCniEPList()
-        logging.info("new ep list:{}".format(newEPList))
-        assert newEPList != initialEPList
+        logging.debug("previous ep list:{}".format(EPList1))
+        EPList3 = readCniEPList()
+        logging.debug("new ep list:{}".format(EPList3))
+        assert EPList3 != EPList1
         tutils.tcLog("Bring controller up")
         scaleDep("kube-system", "aci-containers-controller", 1)
         sleep(10)
         tutils.tcLog("Check ep sync again")
-        kafkaSyncChecker(initialEPList, 4)
+        kafkaSyncChecker(EPList3, 4)
         
