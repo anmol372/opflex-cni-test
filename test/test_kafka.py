@@ -61,6 +61,58 @@ def kafkaChecker(epKeys, respWord, attempts=2):
 
     tutils.assertEventually(checkIt, 1, attempts)
 
+def kafkaSyncChecker(epKeys, attempts=2):
+    v1 = client.CoreV1Api()
+    def checkIt():
+        cmd = ['./kafkakv', '-time-out', '30', '-key-list', ",".join(epKeys)]
+        logging.debug("Command: {}".format(cmd))
+        resp = stream(v1.connect_get_namespaced_pod_exec, "kafkakv", 'default', command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
+            #print("cmd:{} resp: {}".format(cmd, resp))
+        if "exact match" in resp:
+            return ""
+
+        return "Got: {}".format(resp)
+
+    tutils.assertEventually(checkIt, 1, attempts)
+
+def scaleDep(ns, name, replicas):
+    v1 = client.AppsV1Api()
+    scale = v1.read_namespaced_deployment_scale(name, ns)
+    scale.spec.replicas = replicas
+    resp = v1.replace_namespaced_deployment_scale(name, ns, scale)
+    def scaleChecker():
+        curr = v1.read_namespaced_deployment_status(name, ns)
+        if curr.status.ready_replicas is None and replicas == 0:
+            return ""
+
+        if curr.status.ready_replicas == replicas:
+            return ""
+
+        return "expected {} replicas, got {}".format(replicas, curr.status.ready_replicas)
+
+    tutils.assertEventually(scaleChecker, 1, 30)
+
+def readCniEPList():
+    crdApi = client.CustomObjectsApi()
+    group = "aci.aw"
+    ns = "kube-system"
+    epList = crdApi.list_namespaced_custom_object(group, "v1", ns, "podifs")
+    cniEPList = []
+    for k, eps in epList.items():
+        if type(eps) is not list:
+            continue
+        for ep in eps:
+            epStatus = tutils.SafeDict(ep['status'])
+            if epStatus['podns'] is 'missing':
+                logging.debug("MarkerID is {}".format(epStatus['containerID']))
+                continue
+
+            epID = "{}.{}.{}".format(epStatus['podns'],epStatus['podname'], epStatus['ifname'])
+            cniEPList.append(epID)
+
+    return cniEPList
+
+
 kafkaYamls = ["zookeeper-ss.yaml", "zookeeper-hl.yaml", "zookeeper-svc.yaml", "kafka-ss.yaml", "kafka-hl.yaml", "kafka-svc.yaml", "kkv.yaml"]
 
 class TestKafkaInterface(object):
@@ -77,35 +129,25 @@ class TestKafkaInterface(object):
         k8s_api = client.CoreV1Api()
         # check kafka server is ready
         assertPodReady("default", "ut-kafka-0", 120)
+        assertPodReady("default", "kafkakv", 120)
+        sleep(5)
 
         # collect the current list of ep's from k8s
         tutils.tcLog("Collect ep's from k8s")
-        crdApi = client.CustomObjectsApi()
-        group = "aci.aw"
-        ns = "kube-system"
-        epList = crdApi.list_namespaced_custom_object(group, "v1", ns, "podifs")
-        kafkaEPList = []
-        for k, eps in epList.items():
-            if type(eps) is not list:
-                continue
-            for ep in eps:
-                epStatus = tutils.SafeDict(ep['status'])
-                if epStatus['podns'] is 'missing':
-                    logging.debug("MarkerID is {}".format(epStatus['containerID']))
-                    continue
-
-                epID = "{}.{}.{}".format(epStatus['podns'],epStatus['podname'], epStatus['ifname'])
-                kafkaEPList.append(epID)
-
-        logging.debug("EPList is {}".format(kafkaEPList))
+        initialEPList = readCniEPList()
+        logging.debug("EPList is {}".format(initialEPList))
 
         tutils.tcLog("Verifying initial EPList with kafka")
-        kafkaChecker(kafkaEPList, "found")
+        kafkaSyncChecker(initialEPList)
 
         tutils.tcLog("Adding a pod and checking it in kafka")
         utils.create_from_yaml(k8s_client, "yamls/alpine-pod.yaml")
         assertPodReady("default", "alpine-pod", 45)
+
         tutils.tcLog("Check for podif")
+        crdApi = client.CustomObjectsApi()
+        group = "aci.aw"
+        ns = "kube-system"
         p = crdApi.get_namespaced_custom_object(group, "v1", ns, "podifs", "default.alpine-pod")
         logging.debug("podif: {}".format(p))
         epStatus = p['status']
@@ -116,4 +158,26 @@ class TestKafkaInterface(object):
         tutils.tcLog("Deleting a pod and checking removal from kafka")
         k8s_api.delete_namespaced_pod("alpine-pod", "default", client.V1DeleteOptions())
         kafkaChecker(toCheck, "missing", 8)
-	
+
+        tutils.tcLog("Rechecking ep sync between k8s and kafka")
+        kafkaSyncChecker(initialEPList)
+
+        tutils.tcLog("Bring controller down")
+        scaleDep("kube-system", "aci-containers-controller", 0)
+        sleep(10)
+        tutils.tcLog("Change some endpoints")
+        scaleDep("kube-system", "coredns", 0)
+        sleep(5)
+        scaleDep("kube-system", "coredns", 2)
+        sleep(5)
+
+        logging.info("initial ep list:{}".format(initialEPList))
+        newEPList = readCniEPList()
+        logging.info("new ep list:{}".format(newEPList))
+        assert newEPList != initialEPList
+        tutils.tcLog("Bring controller up")
+        scaleDep("kube-system", "aci-containers-controller", 1)
+        sleep(10)
+        tutils.tcLog("Check ep sync again")
+        kafkaSyncChecker(initialEPList, 4)
+        
