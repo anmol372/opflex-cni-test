@@ -190,4 +190,8 @@ class TestKafkaInterface(object):
         sleep(10)
         tutils.tcLog("Check ep sync again")
         kafkaSyncChecker(EPList3, 4)
+        tutils.tcLog("Clean up added endpoints")
+        tutils.scaleRc("busybox", 0)
+        tutils.checkPodsRemoved("app=busybox")
+        k8s_api.delete_namespaced_replication_controller("busybox", "default", client.V1DeleteOptions())
         
