@@ -3,7 +3,7 @@ import logging
 import os
 from kubernetes import client
 
-def assertEventually(checker, delay, count):
+def assertEventually(checker, delay, count, inspector=None):
     ix = 0
     err = ""
     while (ix < count):
@@ -13,7 +13,9 @@ def assertEventually(checker, delay, count):
         ix += 1
         sleep(delay)
     print("Error is: {}".format(err))
-    assert err == ""
+    if inspector is not None:
+        inspector()
+    assert False
 
 class SafeDict(dict):
     'Provide a default value for missing keys'
@@ -22,6 +24,9 @@ class SafeDict(dict):
 
 def tcLog(descr):
     print("\n*** TEST CASE: {}\n".format(descr))
+
+def inspectLog(descr):
+    print("\n!!! ONFAIL: {}\n".format(descr))
 
 def logSetup():
     supportedLogLevels = ['INFO', 'DEBUG', 'ERROR']
@@ -78,3 +83,8 @@ def checkPodsRemoved(selector, ns="default"):
         return "{} pods still present".format(len(resp.items))
 
     assertEventually(checker, 1, 45)
+
+def getPodIP(name, ns):
+    v1 = client.CoreV1Api()
+    resp = v1.read_namespaced_pod_status(name, ns)
+    return resp.status.pod_ip

@@ -130,13 +130,31 @@ class TestNetworkPolicy(object):
         tutils.assertEventually(waiter, 1, 5)
 
         # verify prod can access the svc
-        for ix in range(0, 5):
-            cmd2 = ['nc', '-zvnw', '1', svcIP, '80']
-            resp2 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "prod",
-                          command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
-            logging.debug("prod: {}".format(resp2))
-            assert "open" in resp2
+        cmd2 = ['nc', '-zvnw', '1', svcIP, '80']
+        def prodChecker():
+            for ix in range(0, 5):
+                resp2 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "prod",
+                              command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
+                logging.debug("prod: {}".format(resp2))
+                if "open" not in resp2:
+                    return resp2
 
+            return ""
+
+        clientIP = tutils.getPodIP("client-pod", "prod")
+        ovs_pods = getPodNames(v1, "kube-system", "name=aci-containers-openvswitch")
+        ovs_cmd = ['ovs-ofctl', 'dump-flows', 'br-access', '-OOpenFlow13']
+        def npInspector():
+            tutils.inspectLog("Look for flows on br-access for {}".format(clientIP))
+            for ovs_pod in ovs_pods:
+                ovs_resp = stream(v1.connect_get_namespaced_pod_exec, ovs_pod, "kube-system",
+                                  command=ovs_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+                print("ovs_Pod: {}\n".format(ovs_pod))
+                for line in ovs_resp.splitlines():
+                    if clientIP in line:
+                        print(line)
+
+        tutils.assertEventually(prodChecker, 1, 20, npInspector)
         # and dev can't
         for ix in range(0, 5):
             resp3 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "dev",
@@ -145,11 +163,25 @@ class TestNetworkPolicy(object):
             assert "timed out" in resp3
 
         # delete everything
+        nv1 = client.NetworkingV1Api()
+        nv1.delete_namespaced_network_policy("hostnames-allow-prod", "default", client.V1DeleteOptions())
+        # verify access-br flows are deleted
+        def flowChecker():
+            for ovs_pod in ovs_pods:
+                ovs_resp = stream(v1.connect_get_namespaced_pod_exec, ovs_pod, "kube-system",
+                                  command=ovs_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+                for line in ovs_resp.splitlines():
+                    if clientIP in line:
+                        return line
+
+            return ""
+
+        tutils.tcLog("Verify network policy flows are deleted")
+        tutils.assertEventually(flowChecker, 1, 30)
+
         for ns in nsList:
             v1.delete_namespace(ns, client.V1DeleteOptions()) # deletes the client-pod too
 
-        nv1 = client.NetworkingV1Api()
-        nv1.delete_namespaced_network_policy("hostnames-allow-prod", "default", client.V1DeleteOptions())
         v1.delete_namespaced_service("hostnames-svc", "default", client.V1DeleteOptions())
         av1 = client.AppsV1Api()
         av1.delete_namespaced_deployment("hostnames-dep", "default", client.V1DeleteOptions())

@@ -77,6 +77,13 @@ class TestDNS(object):
                 #FIXME this is not reliable yet...
                 return "svc not resolved {}".format(ns_lookup_cmd)
         
+        # Basic inspection in case of a dns test failer
+        def dnsInspector():
+            tutils.inspectLog("Checking coredns status on failure")
+            av1 = client.AppsV1Api()
+            sr = read_namespaced_deployment_status("coredns", "kube-system")
+            tutils.inspectLog("CoreDNS available: {}, ready: {}".format(sr.availableReplicas, sr.readyReplicas))
+
         tutils.assertEventually(respChecker, 1, 30)
 
         tutils.tcLog("Create a service and check dns resolution")
