@@ -81,10 +81,10 @@ class TestDNS(object):
         def dnsInspector():
             tutils.inspectLog("Checking coredns status on failure")
             av1 = client.AppsV1Api()
-            sr = read_namespaced_deployment_status("coredns", "kube-system")
-            tutils.inspectLog("CoreDNS available: {}, ready: {}".format(sr.availableReplicas, sr.readyReplicas))
+            sr = av1.read_namespaced_deployment_status("coredns", "kube-system")
+            tutils.inspectLog("CoreDNS available: {}, ready: {}".format(sr.status.available_replicas, sr.status.ready_replicas))
 
-        tutils.assertEventually(respChecker, 1, 30)
+        tutils.assertEventually(respChecker, 1, 5, dnsInspector)
 
         tutils.tcLog("Create a service and check dns resolution")
         ns_lookup_cmd = ['nslookup', 'dns-test-svc']
