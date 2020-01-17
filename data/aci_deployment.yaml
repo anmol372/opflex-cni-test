@@ -136,6 +136,7 @@ data:
         "aci-vmm-controller": "defaultTenant",
         "aci-policy-tenant": "defaultTenant",
         "require-netpol-annot": false,
+        "lb-type": "None",
         "aci-service-phys-dom": "defaultTenant-pdom",
         "aci-service-encap": "vlan-1022",
         "aci-service-monitor-interval": 0,
@@ -233,7 +234,7 @@ data:
     {
         "aci-policy-tenant": "defaultTenant",
         "pod-subnet": "11.3.0.1/16",
-        "push-json-file": true,
+        "push-json-file": false,
         "apic": {
             "kafka": {
                 "brokers": [
@@ -562,8 +563,10 @@ spec:
           volumeMounts:
             - name: opflex-server-config-volume
               mountPath: /usr/local/etc/opflex-server
+            - name: hostvar
+              mountPath: /usr/local/var
           args:
-          - "--grpc_address=1.100.201.11:19999 --level=debug2"
+          - "--level=debug2"
         - name: mcast-daemon
           image: challa/opflex:final
           command: ["/bin/sh"]
