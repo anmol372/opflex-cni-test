@@ -97,7 +97,7 @@ Vagrant.configure("2") do |config|
 
     count = count + 1
 
-    if count == 1 && ENV['SKIP_LB']
+    if count == 1 && !ENV['NEED_LB']
       next
     end
 
