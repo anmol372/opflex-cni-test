@@ -61,6 +61,20 @@ spec:
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  name: rdconfigs.aci.snat
+spec:
+  group: aci.snat
+  names:
+    kind: RdConfig
+    listKind: RdConfigList
+    plural: rdconfigs
+    singular: rdconfig
+  scope: Namespaced
+  version: v1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
   name: epgs.aci.aw
 spec:
   group: aci.aw
@@ -225,7 +239,7 @@ data:
   opflex-agent-config: |-
     {
         "log": {
-            "level": "debug"
+            "level": "debug2"
         },
         "opflex": {
         }
@@ -351,6 +365,7 @@ rules:
   - "aci.snat"
   resources:
   - nodeinfos
+  - rdconfigs
   verbs:
   - create
   - list
@@ -416,6 +431,7 @@ rules:
   - "aci.snat"
   resources:
   - nodeinfos
+  - rdconfigs
   verbs:
   - create
   - list
@@ -528,7 +544,8 @@ spec:
               path: /status
               port: 8090
         - name: opflex-agent
-          image: challa/opflex:testing
+          #image: challa/opflex:master1
+          image: challa/opflex:master2
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -550,7 +567,7 @@ spec:
               mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
         - name: opflex-server
           #image: challa/opflexserver:final
-          image: challa/opflex-server:merge
+          image: challa/opflex-server:master2
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -565,10 +582,10 @@ spec:
               mountPath: /usr/local/etc/opflex-server
             - name: hostvar
               mountPath: /usr/local/var
-          args:
-          - "--level=debug2"
+#          args:
+#          - "--level=debug2"
         - name: mcast-daemon
-          image: challa/opflex:final
+          image: challa/opflex:master2
           command: ["/bin/sh"]
           args: ["/usr/local/bin/launch-mcastdaemon.sh"]
           imagePullPolicy: Always
@@ -642,7 +659,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: aci-containers-openvswitch
-          image: challa/openvswitch:final
+          image: challa/openvswitch:master2
           imagePullPolicy: Always
           securityContext:
             capabilities:
