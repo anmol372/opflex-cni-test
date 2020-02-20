@@ -30,3 +30,4 @@ class TestBasic(object):
     def test_cni_status(object):
         tutils.tcLog("Verify status of system pods")
         assertEventually(checkPodStatus, 1, 90)
+        tutils.checkAgentLog()

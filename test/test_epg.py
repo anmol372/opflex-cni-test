@@ -42,7 +42,7 @@ def createPod(name):
             return ""
         return "Pod not ready"
 
-    tutils.assertEventually(podChecker, 1, 30)
+    tutils.assertEventually(podChecker, 1, 60)
     # return IP
     s = k8s_api.read_namespaced_pod_status(name, "default")
     return s.status.pod_ip
@@ -61,7 +61,7 @@ def createCRD(plural, name):
             return ""
         return "CRD {}/{} not created".format(plural, name)
 
-    tutils.assertEventually(crdChecker, 1, 30)
+    tutils.assertEventually(crdChecker, 1, 60)
 
 def deleteCRD(plural, name):
     crd_api = client.CustomObjectsApi(k8s_client)
@@ -77,7 +77,8 @@ class TestEPG(object):
         # check rc is ready
         def rcChecker():
             return checkRCStatus(k8s_api, 3)
-        tutils.assertEventually(rcChecker, 1, 30)
+        tutils.assertEventually(rcChecker, 1, 60)
+        tutils.checkAgentLog()
         
         # check pods are ready
         def podChecker():
@@ -91,7 +92,7 @@ class TestEPG(object):
 
             return ""
 
-        tutils.assertEventually(podChecker, 1, 30)
+        tutils.assertEventually(podChecker, 1, 60)
 
         # verify connectivity
         ips = getPodIPs(k8s_api, "default", "app=busybox")
@@ -113,7 +114,7 @@ class TestEPG(object):
                     return "3 packets not received"
             return ""
 
-        tutils.assertEventually(pingChecker, 1, 30)
+        tutils.assertEventually(pingChecker, 1, 60)
 
         tutils.tcLog("Delete pods")
         tutils.scaleRc("busybox", 0)
@@ -130,6 +131,7 @@ class TestEPG(object):
         # pods in epg-b
         ip_6020 = createPod("pod-b6020")
         ip_6021 = createPod("pod-b6021")
+        tutils.checkAgentLog()
 
         # verify ping fails across epgs
         tutils.tcLog("Verify ping failure across epgs")
@@ -170,8 +172,9 @@ class TestEPG(object):
         for pod in toDelete:
             v1.delete_namespaced_pod(pod, "default", client.V1DeleteOptions())
         for pod in toDelete:
-            tutils.checkPodDeleted(v1, "default", pod, 60)
+            tutils.checkPodDeleted(v1, "default", pod, 120)
 
         deleteCRD("contracts", "tcp-6020")
         deleteCRD("epgs", "epg-a")
         deleteCRD("epgs", "epg-b")
+        tutils.checkAgentLog()
