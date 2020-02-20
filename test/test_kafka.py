@@ -143,12 +143,14 @@ class TestKafkaInterface(object):
         tutils.tcLog("Adding a pod and checking it in kafka")
         utils.create_from_yaml(k8s_client, "yamls/alpine-pod.yaml")
         assertPodReady("default", "alpine-pod", 45)
+        vtep = tutils.getPodNodeIP("alpine-pod", "default")
 
         tutils.tcLog("Check for podif")
         crdApi = client.CustomObjectsApi()
         group = "aci.aw"
         ns = "kube-system"
-        p = crdApi.get_namespaced_custom_object(group, "v1", ns, "podifs", "default.alpine-pod")
+        podifName = "default.alpine-pod.{}".format(vtep)
+        p = crdApi.get_namespaced_custom_object(group, "v1", ns, "podifs", podifName)
         logging.debug("podif: {}".format(p))
         epStatus = p['status']
         epID = "{}.{}.{}".format(epStatus['podns'], epStatus['podname'], epStatus['ifname'])

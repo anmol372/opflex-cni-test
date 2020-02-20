@@ -88,3 +88,26 @@ def getPodIP(name, ns):
     v1 = client.CoreV1Api()
     resp = v1.read_namespaced_pod_status(name, ns)
     return resp.status.pod_ip
+
+def getPodNodeIP(name, ns):
+    v1 = client.CoreV1Api()
+    resp = v1.read_namespaced_pod_status(name, ns)
+    return resp.status.host_ip
+
+def getNodeIPs(name, ns):
+    result = dict()
+    v1 = client.CoreV1Api()
+    resp = v1.list_node()
+    for node in resp.items:
+        result[node.metadata.name] = node.status.addresses[0].address
+
+    return result
+
+def checkAgentLog():
+    v1 = client.CoreV1Api()
+    pod_list = v1.list_namespaced_pod("kube-system", label_selector="name=aci-containers-host")
+    for pod in pod_list.items:
+        resp = v1.read_namespaced_pod_log(pod.metadata.name, "kube-system", container="opflex-agent")
+        #assert "Failed to get VirtualRouterIp" not in resp
+        print("Checking agent log on {}".format(pod.metadata.name))
+        assert "regular" not in resp
