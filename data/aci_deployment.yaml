@@ -159,7 +159,7 @@ data:
         "aci-ext-networks": [
             "l3out_v1_net"
         ],
-        "aci-vrf": "defaultVrf",
+        "aci-vrf": "overlay_vrf",
         "default-endpoint-group": {
             "policy-space": "defaultTenant",
             "name": "kubernetes|kube-default"
@@ -205,10 +205,10 @@ data:
         "opflex-mode": "overlay",
         "log-level": "debug",
         "aci-vmm-type": "Kubernetes",
-        "aci-vmm-domain": "defaultTenant",
-        "aci-vmm-controller": "defaultTenant",
+        "aci-vmm-domain": "kubedom",
+        "aci-vmm-controller": "kubedom",
         "aci-prefix": "defaultTenant",
-        "aci-vrf": "defaultVrf",
+        "aci-vrf": "overlay_vrf",
         "aci-vrf-tenant": "defaultTenant",
         "service-vlan": 1022,
         "encap-type": "vxlan",
@@ -247,6 +247,7 @@ data:
   gbp-server-config: |-
     {
         "aci-policy-tenant": "defaultTenant",
+        "aci-vrf": "overlay_vrf",
         "pod-subnet": "11.3.0.1/16",
         "push-json-file": false,
         "apic": {
@@ -544,8 +545,7 @@ spec:
               path: /status
               port: 8090
         - name: opflex-agent
-          #image: challa/opflex:master1
-          image: challa/opflex:master2
+          image: challa/opflex:master
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -566,8 +566,7 @@ spec:
             - name: opflex-config-volume
               mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
         - name: opflex-server
-          #image: challa/opflexserver:final
-          image: challa/opflex-server:master2
+          image: challa/opflex-server:master
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -585,7 +584,7 @@ spec:
 #          args:
 #          - "--level=debug2"
         - name: mcast-daemon
-          image: challa/opflex:master2
+          image: challa/opflex:master
           command: ["/bin/sh"]
           args: ["/usr/local/bin/launch-mcastdaemon.sh"]
           imagePullPolicy: Always
@@ -659,7 +658,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: aci-containers-openvswitch
-          image: challa/openvswitch:master2
+          image: challa/openvswitch:master
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -736,7 +735,6 @@ spec:
       containers:
         - name: aci-gbpserver
           image: 1.100.201.1:5000/gbp-server:ci_test
-#          image: challa/gbp-server:merge
           imagePullPolicy: Always
           volumeMounts:
             - name: kubeconfig

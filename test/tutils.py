@@ -2,6 +2,7 @@ from time import sleep
 import logging
 import os
 from kubernetes import client
+from kubernetes.stream import stream
 
 def assertEventually(checker, delay, count, inspector=None):
     ix = 0
@@ -103,11 +104,41 @@ def getNodeIPs(name, ns):
 
     return result
 
+def namespaceExists(ns):
+    v1 = client.CoreV1Api()
+    ns_list = v1.list_namespace()
+    for ns_obj in ns_list.items:
+        if ns_obj.metadata.name == ns:
+            return True
+    return False
+
+def getSysNs():
+    if namespaceExists("aci-containers-system"):
+        return "aci-containers-system"
+
+    return "kube-system"
+
 def checkAgentLog():
     v1 = client.CoreV1Api()
-    pod_list = v1.list_namespaced_pod("kube-system", label_selector="name=aci-containers-host")
+    systemNs = getSysNs()
+    pod_list = v1.list_namespaced_pod(systemNs, label_selector="name=aci-containers-host")
     for pod in pod_list.items:
-        resp = v1.read_namespaced_pod_log(pod.metadata.name, "kube-system", container="opflex-agent")
+        resp = v1.read_namespaced_pod_log(pod.metadata.name, systemNs, container="opflex-agent")
+        #print("Checking agent log on {}".format(pod.metadata.name))
         #assert "Failed to get VirtualRouterIp" not in resp
-        print("Checking agent log on {}".format(pod.metadata.name))
-        assert "regular" not in resp
+        #assert "regular" not in resp
+
+def verifyAgentEPs(epIPs):
+    ret_str = ""
+    systemNs = getSysNs()
+    v1 = client.CoreV1Api()
+    pod_list = v1.list_namespaced_pod(systemNs, label_selector="name=aci-containers-host")
+    cmd = "gbp_inspect -w 100000 -fprq DmtreeRoot -t dump".split()
+    for pod in pod_list.items:
+        resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, systemNs, container="opflex-agent", command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
+        for epIP in epIPs:
+            if epIP not in resp:
+                #print("{} not found on node {}".format(epIP, pod.status.pod_ip)
+                ret_str = ret_str + "{}/{}".format(epIP, pod.status.pod_ip)
+
+    return ret_str
