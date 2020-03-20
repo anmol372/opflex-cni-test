@@ -16,7 +16,7 @@ k8s_client = client.ApiClient()
 
 def checkRCStatus(kapi, replicas):
     s = kapi.read_namespaced_replication_controller_status("busybox", "default")
-    if s.status.ready_replicas == replicas:
+    if s.status.ready_replicas >= replicas:
         return ""
     logging.debug("busybox: Not ready yet...")
     return "Expected {} ready replicas, got {}".format(replicas, s.status.ready_replicas)
@@ -58,9 +58,15 @@ def createPod(name):
 
 class TestConnectivity(object):
 
+    delete_rc = True
     def test_default(object):
-        tutils.tcLog("Create 3 pods in default epg")
-        k8s_api = utils.create_from_yaml(k8s_client, "yamls/busybox.yaml")
+        k8s_api = client.CoreV1Api()
+        if not checkRCStatus(k8s_api, 3):
+            logging.debug("Using existing rc")
+            delete_rc = False
+        else:
+            tutils.tcLog("Create 3 pods in default epg")
+            k8s_api = utils.create_from_yaml(k8s_client, "yamls/busybox.yaml")
 
         # check rc is ready
         def rcChecker():
@@ -71,7 +77,7 @@ class TestConnectivity(object):
         # check pods are ready
         def podChecker():
             pod_list = k8s_api.list_namespaced_pod("default", label_selector="app=busybox")
-            if len(pod_list.items) != 3:
+            if len(pod_list.items) < 3:
                 return "Expected 3 pods, got {}".format(len(pod_list.items))
               
             for pod in pod_list.items:
@@ -140,8 +146,11 @@ class TestConnectivity(object):
 
         tutils.assertEventually(k8sChecker, 1, 10)
 
-        tutils.tcLog("Delete pods")
-        tutils.scaleRc("busybox", 0)
-        k8s_api.delete_namespaced_replication_controller("busybox", "default", client.V1DeleteOptions())
+        if delete_rc:
+            tutils.tcLog("Delete pods")
+            tutils.scaleRc("busybox", 0)
+            k8s_api.delete_namespaced_replication_controller("busybox", "default", client.V1DeleteOptions())
+        else:
+            logging.debug("Skipping rc delete")
 
 
