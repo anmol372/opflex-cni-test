@@ -142,3 +142,19 @@ def verifyAgentEPs(epIPs):
                 ret_str = ret_str + "{}/{}".format(epIP, pod.status.pod_ip)
 
     return ret_str
+
+def verifyAgentContracts(contracts, expect):
+    ret_str = ""
+    systemNs = getSysNs()
+    v1 = client.CoreV1Api()
+    pod_list = v1.list_namespaced_pod(systemNs, label_selector="name=aci-containers-host")
+    cmd = "gbp_inspect -w 100000 -fprq DmtreeRoot -t dump".split()
+    for pod in pod_list.items:
+        resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, systemNs, container="opflex-agent", command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
+        for c in contracts:
+            if c not in resp and expect:
+                ret_str = ret_str + "{} not/{}".format(c, pod.status.pod_ip)
+            if c in resp and not expect:
+                ret_str = ret_str + "{} on/{}".format(c, pod.status.pod_ip)
+
+    return ret_str

@@ -63,6 +63,16 @@ def createCRD(plural, name):
 
     tutils.assertEventually(crdChecker, 1, 60)
 
+def replaceCRD(plural, name, new_file):
+    crd_api = client.CustomObjectsApi(k8s_client)
+    orig_obj = crd_api.get_namespaced_custom_object("aci.aw", "v1", "kube-system", plural, name)
+
+    print(orig_obj)
+    with open(path.abspath(nameToYaml(new_file))) as f:
+        crd_obj = yaml.load(f)
+        crd_obj['metadata']['resourceVersion'] = orig_obj['metadata']['resourceVersion']
+        crd_api.replace_namespaced_custom_object("aci.aw", "v1", "kube-system", plural, name, crd_obj)
+
 def deleteCRD(plural, name):
     crd_api = client.CustomObjectsApi(k8s_client)
     body = client.V1DeleteOptions()
@@ -123,6 +133,7 @@ class TestEPG(object):
     def test_policy(object):
         v1 = client.CoreV1Api()
         createCRD("contracts", "tcp-6020")
+        createCRD("contracts", "tcp-6021")
         sleep(1)
         createCRD("epgs", "epg-a")
         createCRD("epgs", "epg-b")
@@ -167,6 +178,45 @@ class TestEPG(object):
         logging.debug("=>pod-b6020 to pod-b[6021] Resp is {}".format(resp))
         assert "open" in resp
 
+        tutils.tcLog("Change allowed port to 6021")
+        replaceCRD("epgs", "epg-a", "epg-a-upd")
+        replaceCRD("epgs", "epg-b", "epg-b-upd")
+        tutils.tcLog("Verify new contract is on agents")
+        def contractChecker():
+            resp = tutils.verifyAgentContracts(["GbpeL24Classifier/tcp-6021"], True)
+            if resp == "":
+                print("GbpeL24Classifier/tcp-6021 present")
+            else:
+                print(resp)
+
+            return resp
+
+        tutils.assertEventually(contractChecker, 1, 10)
+        sleep(5)
+        tutils.tcLog("port 6021 now allowed from pod-a to epg-b")
+        cmd2 = ['nc', '-zvnw', '1', ip_6021, '6021']
+        resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
+                      command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
+        logging.debug("=>pod-a to epg-b[6021] Resp is {}".format(resp))
+        assert "open" in resp
+
+        def contractRemChecker():
+            resp = tutils.verifyAgentContracts(["GbpEpGroupToConsContractRSrc/288/tcp-6020", "GbpEpGroupToProvContractRSrc/288/tcp-6020"], False)
+            if resp == "":
+                print("GbpEpGroupToConsContractRSrc/288/tcp-6020, GbpEpGroupToProvContractRSrc/288/tcp-6020 removed")
+            else:
+                print(resp)
+
+            return resp
+
+        tutils.assertEventually(contractRemChecker, 1, 10)
+        tutils.tcLog("port 6020 now denied from pod-a to epg-b")
+        cmd1 = ['nc', '-zvnw', '1', ip_6020, '6020']
+        resp = stream(v1.connect_get_namespaced_pod_exec, "pod-a", 'default',
+                      command=cmd1, stderr=True, stdin=False, stdout=True, tty=False)
+        logging.debug("=>pod-a to epg-b[6020] Resp is {}".format(resp))
+        assert "timed out" in resp
+
         toDelete = ["pod-a", "pod-b6020", "pod-b6021"]
         logging.info("Deleting {}\n".format(toDelete))
         for pod in toDelete:
@@ -175,6 +225,7 @@ class TestEPG(object):
             tutils.checkPodDeleted(v1, "default", pod, 120)
 
         deleteCRD("contracts", "tcp-6020")
+        deleteCRD("contracts", "tcp-6021")
         deleteCRD("epgs", "epg-a")
         deleteCRD("epgs", "epg-b")
         tutils.checkAgentLog()
