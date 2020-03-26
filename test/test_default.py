@@ -15,11 +15,17 @@ configuration.assert_hostname = False
 k8s_client = client.ApiClient()
 
 def checkRCStatus(kapi, replicas):
-    s = kapi.read_namespaced_replication_controller_status("busybox", "default")
-    if s.status.ready_replicas >= replicas:
-        return ""
+    resp = kapi.list_namespaced_replication_controller("default")
+    for rc in resp.items:
+        if rc.metadata.name == "busybox":
+            rr = rc.status.ready_replicas
+            if rr is not None and rr >= replicas:
+                return ""
+            else:
+                return "Expected {} ready replicas, got {}".format(replicas, rc.status.ready_replicas)
+        
     logging.debug("busybox: Not ready yet...")
-    return "Expected {} ready replicas, got {}".format(replicas, s.status.ready_replicas)
+    return "rc busybox not found"
 
 def getPodIPs(kapi, ns, selector):
     ips = []
