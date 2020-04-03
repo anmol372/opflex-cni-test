@@ -246,6 +246,7 @@ data:
     }
   gbp-server-config: |-
     {
+        "grpc-log-level": "debug",
         "aci-policy-tenant": "defaultTenant",
         "aci-vrf": "overlay_vrf",
         "pod-subnet": "11.3.0.1/16",
@@ -525,6 +526,8 @@ spec:
                   fieldPath: spec.nodeName
             - name: TENANT
               value: "defaultTenant"
+            - name: OPFLEX_MODE
+              value: "overlay"
           volumeMounts:
             - name: cni-bin
               mountPath: /mnt/cni-bin
