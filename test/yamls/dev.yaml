@@ -4,3 +4,4 @@ metadata:
   name: dev
   labels:
     purpose: development
+    openshift.io/run-level: "0"

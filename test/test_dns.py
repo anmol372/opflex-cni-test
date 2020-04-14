@@ -44,7 +44,7 @@ def createPod(name):
             return ""
         return "Pod not ready"
 
-    tutils.assertEventually(podChecker, 1, 30)
+    tutils.assertEventually(podChecker, 1, 60)
     # return IP
     s = k8s_api.read_namespaced_pod_status(name, "default")
     return s.status.pod_ip
@@ -90,7 +90,7 @@ class TestDNS(object):
         ns_lookup_cmd = ['nslookup', 'dns-test-svc']
         svcIP = createNsSvc("default", "dns-test-svc")
         logging.info("***svcIP is {}".format(svcIP))
-        tutils.assertEventually(respChecker, 1, 45)
+        tutils.assertEventually(respChecker, 1, 60)
 
         v1.delete_namespaced_pod("alpine-pod", "default", client.V1DeleteOptions())
         v1.delete_namespaced_service("dns-test-svc", "default", client.V1DeleteOptions())

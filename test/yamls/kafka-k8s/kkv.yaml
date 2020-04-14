@@ -3,6 +3,7 @@ kind: Pod
 metadata:
   name: kafkakv
 spec:
+  hostNetwork: true
   containers:
   - name: kv
     image: 1.100.201.1:5000/kafkakv
@@ -18,3 +19,4 @@ spec:
   - name: kafka-certs
     secret:
       secretName: kafka-kv-certificates
+  nodeName: test-master

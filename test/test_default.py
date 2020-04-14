@@ -64,8 +64,8 @@ def createPod(name):
 
 class TestConnectivity(object):
 
-    delete_rc = True
     def test_default(object):
+        delete_rc = True
         k8s_api = client.CoreV1Api()
         if not checkRCStatus(k8s_api, 3):
             logging.debug("Using existing rc")

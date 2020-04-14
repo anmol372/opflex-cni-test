@@ -246,7 +246,8 @@ data:
     }
   gbp-server-config: |-
     {
-        "grpc-log-level": "debug",
+        "grpc-log-level": "info",
+        "log-level": "info",
         "aci-policy-tenant": "defaultTenant",
         "aci-vrf": "overlay_vrf",
         "pod-subnet": "11.3.0.1/16",
@@ -261,7 +262,8 @@ data:
                 "ca-cert-path": "/certs/ca.crt",
                 "topic": "clusterA",
                 "username": "user",
-                "password": "bitnami"
+                "password": "bitnami",
+                "kafka-log-level": "debug"
             },
            "cloud-info": {
                 "cluster-name": "clusterA"
@@ -548,7 +550,7 @@ spec:
               path: /status
               port: 8090
         - name: opflex-agent
-          image: challa/opflex:master
+          image: challa/opflex:master1
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -569,7 +571,7 @@ spec:
             - name: opflex-config-volume
               mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
         - name: opflex-server
-          image: challa/opflex-server:master
+          image: challa/opflex-server:master1
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -587,7 +589,7 @@ spec:
 #          args:
 #          - "--level=debug2"
         - name: mcast-daemon
-          image: challa/opflex:master
+          image: challa/opflex:master1
           command: ["/bin/sh"]
           args: ["/usr/local/bin/launch-mcastdaemon.sh"]
           imagePullPolicy: Always

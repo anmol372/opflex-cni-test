@@ -135,7 +135,7 @@ class TestKafkaInterface(object):
         # collect the current list of ep's from k8s
         tutils.tcLog("Collect ep's from k8s")
         initialEPList = readCniEPList()
-        logging.debug("EPList is {}".format(initialEPList))
+        logging.info("EPList is {}".format(initialEPList))
 
         tutils.tcLog("Verifying initial EPList with kafka")
         kafkaSyncChecker(initialEPList)
