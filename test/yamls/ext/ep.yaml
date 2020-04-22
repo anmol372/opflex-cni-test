@@ -1,0 +1,8 @@
+apiVersion: aci.aw/v1
+kind: PodIF
+metadata:
+  name: extnet-dns
+  namespace: kube-system
+status:
+  epg: epg-ext
+  ipaddr: 8.8.8.0/24

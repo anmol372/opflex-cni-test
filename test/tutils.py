@@ -158,3 +158,82 @@ def verifyAgentContracts(contracts, expect):
                 ret_str = ret_str + "{} on/{}".format(c, pod.status.pod_ip)
 
     return ret_str
+
+def setupNodeRouting(podName, nodeName, externIP, undo=False):
+    v1 = client.CoreV1Api()
+    resp = v1.read_namespaced_pod(podName, "default")
+    if resp.spec.node_name != nodeName:
+        print("pod {} is on node {} exp: {}, skip routing setup".format(podName, resp.spec.node_name, nodeName))    
+        return
+    podIP = resp.status.pod_ip
+    nodeIP = resp.status.host_ip
+    pgwMac = "00:22:bd:f8:19:ff"
+    gwIP = "11.3.0.1"
+    netmask = "255.255.0.0"
+    subnet = "11.3.0.0/16"
+    setup_cmds = [
+                    "iptables -t nat -I POSTROUTING -d 8.8.8.8 -j MASQUERADE",
+                    "ifconfig veth_host {} netmask {}".format(gwIP, netmask),
+                    "arp -s {} {}".format(podIP, pgwMac),
+                    "ip route del {}".format(subnet),
+                    "ip route add {} via {} dev veth_host proto kernel scope link".format(subnet, gwIP),
+                 ]
+    undo_cmds = [
+                    "iptables -t nat -D POSTROUTING -d 8.8.8.8 -j MASQUERADE",
+                    "arp -d {}".format(podIP),
+                    "ifconfig veth_host 0.0.0.0",
+                    "ip route del {}".format(subnet),
+                    "ip route add {} dev veth_host proto kernel scope link src {}".format(subnet, nodeIP),
+                 ]
+    # exec into the hostagent to set up routing
+    todo_cmds = [[]]
+    if undo:
+        todo_cmds = undo_cmds
+    else:
+        todo_cmds = setup_cmds
+    systemNs = getSysNs()
+    pod_list = v1.list_namespaced_pod(systemNs, label_selector="name=aci-containers-host")
+    for pod in pod_list.items:
+        if pod.spec.node_name == nodeName:
+            for c in todo_cmds:
+                cmd = c.split(" ")
+                print("Executing {}".format(cmd))
+                resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, systemNs, container="aci-containers-host", command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
+                if resp != "":
+                    print("{} gave resp: {}".format(cmd, resp))
+    
+def verifyPing(podName, ns, dest, expSuccess=True):
+    ping_cmd = ['ping', '-c', '3', '-W', '1', dest]
+    v1 = client.CoreV1Api()
+    def pingChecker():
+        resp = stream(v1.connect_get_namespaced_pod_exec, podName, ns,
+                              command=ping_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+        if expSuccess:
+            if "3 packets received" not in resp:
+                return "3 packets not received"
+            return ""
+        else:
+            if "0 packets received" not in resp:
+                return resp
+            return ""
+    assertEventually(pingChecker, 2, 30)
+
+def verifyTCP(podName, ns, destIP, destPort, expSuccess=True):
+    nc_cmd = ['nc', '-zvnw', '1', destIP, destPort]
+    v1 = client.CoreV1Api()
+    def ncChecker():
+        resp = stream(v1.connect_get_namespaced_pod_exec, podName, ns,
+                              command=nc_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+        if expSuccess:
+            if "open" in resp:
+                return ""
+        else:
+            if "timed out" in resp:
+                return ""
+        return "failed:" + resp
+    assertEventually(ncChecker, 2, 30)
+
+def deletePod(ns, name):
+    v1 = client.CoreV1Api()
+    v1.delete_namespaced_pod(name, ns, client.V1DeleteOptions())
+    checkPodDeleted(v1, ns, name, 60) 

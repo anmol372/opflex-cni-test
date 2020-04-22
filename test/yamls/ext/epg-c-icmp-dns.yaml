@@ -1,0 +1,12 @@
+apiVersion: aci.aw/v1
+kind: Epg
+metadata:
+  name: epg-c
+  namespace: kube-system
+spec:
+  name: epg-c
+  consumed-contracts:
+    - tcp-53
+    - icmp
+  provided-contracts:
+    - icmp

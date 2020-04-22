@@ -1,0 +1,9 @@
+apiVersion: aci.aw/v1
+kind: Contract
+metadata:
+  name: icmp
+  namespace: kube-system
+spec:
+  name: icmp
+  allow-list:
+    - protocol: icmp

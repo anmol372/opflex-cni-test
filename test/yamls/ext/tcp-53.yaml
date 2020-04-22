@@ -1,0 +1,12 @@
+apiVersion: aci.aw/v1
+kind: Contract
+metadata:
+  name: tcp-53
+  namespace: kube-system
+spec:
+  name: tcp-53
+  allow-list:
+    - protocol: tcp
+      ports:
+        start: 53
+        end: 53

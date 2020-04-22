@@ -1,0 +1,12 @@
+apiVersion: aci.aw/v1
+kind: Epg
+metadata:
+  name: epg-ext
+  namespace: kube-system
+spec:
+  name: epg-ext
+  provided-contracts:
+    - icmp
+  consumed-contracts:
+    - icmp
+
