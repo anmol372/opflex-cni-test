@@ -67,8 +67,9 @@ def deleteCRD(plural, name):
     crd_api.delete_namespaced_custom_object("aci.aw", "v1", "kube-system", plural, name, body)
 
 class TestExtPol(object):
-#iptables -t nat -I POSTROUTING -d 8.8.8.8 -j MASQUERADE
     def test_policy(object):
+        tutils.tcLog("Verify GW flows are present")
+        tutils.checkGwFlows("11.3.0.1")
         tutils.tcLog("Setup contracts, epgs and external EP")
         v1 = client.CoreV1Api()
         createCRD("contracts", "tcp-53")

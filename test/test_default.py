@@ -65,6 +65,8 @@ def createPod(name):
 class TestConnectivity(object):
 
     def test_default(object):
+        tutils.tcLog("Verify GW flows are present")
+        tutils.checkGwFlows("11.3.0.1")
         delete_rc = True
         k8s_api = client.CoreV1Api()
         if not checkRCStatus(k8s_api, 3):

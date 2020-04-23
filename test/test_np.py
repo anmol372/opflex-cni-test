@@ -65,6 +65,8 @@ def createNsNetPol(ns, name):
 class TestNetworkPolicy(object):
 
     def test_np(object):
+        tutils.tcLog("Verify GW flows are present")
+        tutils.checkGwFlows("11.3.0.1")
         # create a service/deployment in default namespace
         svcIP = createNsSvc("default", "hostnames-svc")
         k8s_api = utils.create_from_yaml(k8s_client, "yamls/hostnames-dep.yaml")

@@ -237,3 +237,25 @@ def deletePod(ns, name):
     v1 = client.CoreV1Api()
     v1.delete_namespaced_pod(name, ns, client.V1DeleteOptions())
     checkPodDeleted(v1, ns, name, 60) 
+
+def checkGwFlows(gwIP):
+    ns = getSysNs()
+    v1 = client.CoreV1Api()
+    ovs_pods = []
+    pod_list = v1.list_namespaced_pod(ns, label_selector="name=aci-containers-openvswitch")
+    for pod in pod_list.items:
+        if pod.status.phase == "Running":
+            ovs_pods.append(pod.metadata.name)
+    ovs_cmd = "ovs-ofctl dump-flows br-int -OOpenFlow13 table=5".split(" ")
+    def flowChecker():
+        for ovs_pod in ovs_pods:
+            ovs_resp = stream(v1.connect_get_namespaced_pod_exec, ovs_pod, ns,
+                              command=ovs_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+            found = False
+            for line in ovs_resp.splitlines():
+                if gwIP in line:
+                    found = True
+            if not found:
+                return "{} not found on {}".format(gwIP, ovs_pod)
+        return ""
+    assertEventually(flowChecker, 1, 30)
