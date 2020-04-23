@@ -550,7 +550,7 @@ spec:
               path: /status
               port: 8090
         - name: opflex-agent
-          image: challa/opflex:master1
+          image: challa/opflex:master
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -571,7 +571,7 @@ spec:
             - name: opflex-config-volume
               mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
         - name: opflex-server
-          image: challa/opflex-server:master1
+          image: challa/opflex-server:master
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -589,7 +589,7 @@ spec:
 #          args:
 #          - "--level=debug2"
         - name: mcast-daemon
-          image: challa/opflex:master1
+          image: challa/opflex:master
           command: ["/bin/sh"]
           args: ["/usr/local/bin/launch-mcastdaemon.sh"]
           imagePullPolicy: Always
