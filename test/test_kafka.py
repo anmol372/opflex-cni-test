@@ -15,6 +15,14 @@ config.load_kube_config()
 configuration.assert_hostname = False
 k8s_client = client.ApiClient()
 
+def checkSystemStatus():
+        v1 = client.CoreV1Api()
+        pod_list = v1.list_namespaced_pod("kube-system")
+        for pod in pod_list.items:
+            if pod.status.phase != "Running":
+                return "pod {} status is {}".format(pod.metadata.name, pod.status.phase)
+        return ""
+
 def getPodNames(kapi, ns, selector):
     names = []
     pod_list = kapi.list_namespaced_pod(ns, label_selector=selector)
@@ -190,8 +198,10 @@ class TestKafkaInterface(object):
         tutils.tcLog("Bring controller up")
         scaleDep("kube-system", "aci-containers-controller", 1)
         sleep(10)
+        tutils.tcLog("Verify controller is up")
+        tutils.assertEventually(checkSystemStatus, 1, 60)
         tutils.tcLog("Check ep sync again")
-        kafkaSyncChecker(EPList3, 4)
+        kafkaSyncChecker(EPList3, 6)
         tutils.tcLog("Clean up added endpoints")
         tutils.scaleRc("busybox", 0)
         tutils.checkPodsRemoved("app=busybox")
