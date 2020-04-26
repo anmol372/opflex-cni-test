@@ -259,3 +259,20 @@ def checkGwFlows(gwIP):
                 return "{} not found on {}".format(gwIP, ovs_pod)
         return ""
     assertEventually(flowChecker, 1, 30)
+
+def scaleDep(ns, name, replicas):
+    v1 = client.AppsV1Api()
+    scale = v1.read_namespaced_deployment_scale(name, ns)
+    scale.spec.replicas = replicas
+    resp = v1.replace_namespaced_deployment_scale(name, ns, scale)
+    def scaleChecker():
+        curr = v1.read_namespaced_deployment_status(name, ns)
+        if curr.status.ready_replicas is None and replicas == 0:
+            return ""
+
+        if curr.status.ready_replicas == replicas:
+            return ""
+
+        return "expected {} replicas, got {}".format(replicas, curr.status.ready_replicas)
+
+    assertEventually(scaleChecker, 1, 30)

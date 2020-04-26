@@ -62,6 +62,9 @@ def createNsNetPol(ns, name):
         np_obj = yaml.load(f)
         nv1.create_namespaced_network_policy(ns, np_obj)
 
+def lbWorkaround():
+    sleep(10)  # shortterm work around LB issue
+
 class TestNetworkPolicy(object):
 
     def test_np(object):
@@ -91,12 +94,12 @@ class TestNetworkPolicy(object):
         for ns in nsList:
             createNsPod(ns, "client-pod")
         
-        tutils.tcLog("Verify loadbalancing")
+        tutils.tcLog("Verify loadbalancing from dev and prod")
         # verify both clients can access the service, and the service load balances.
         for ns in nsList:
             cmd = ['curl', '--connect-timeout', '1', '-s', svcIP]
             backends = dict()
-            for count in range(0, 120):
+            for count in range(0, 12):
                 resp = stream(v1.connect_get_namespaced_pod_exec, "client-pod", ns,
                               command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
                 if resp == "":
@@ -107,12 +110,25 @@ class TestNetworkPolicy(object):
                 if len(backends) == 2:
                     break
 
-                sleep(10)  # shortterm work around LB issue
+                lbWorkaround()
             #assert len(backends) == 2
             logging.info("backends: {}".format(backends.keys()))
 
+        tutils.tcLog("Verify there are no timeouts")
+        nc_cmd = ['nc', '-zvnw', '1', svcIP, '80']
+        for ns in nsList:
+            for count in range(0, 6):
+                resp = stream(v1.connect_get_namespaced_pod_exec, "client-pod", ns,
+                              command=nc_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+                if 'open' not in resp:
+                    print("Error - {}, expected open".format(resp))
+                    assert(False)
+                lbWorkaround()
+
         # apply networkpolicy allowing access only to prod
+        tutils.tcLog("Create k8s network policy")
         createNsNetPol("default", "hostnames-allow-prod")
+        sleep(10)
 
         cmd = ['curl', '--connect-timeout', '1', svcIP]
         # wait for netpol to take effect
@@ -130,18 +146,20 @@ class TestNetworkPolicy(object):
                     return ""
             return "still accessible"
 
-        tutils.tcLog("Verify k8s network policy")
+        tutils.tcLog("Verify dev cannot access the svc")
         tutils.assertEventually(waiter, 1, 120)
 
+        tutils.tcLog("Verify prod can access the svc")
         # verify prod can access the svc
         cmd2 = ['nc', '-zvnw', '1', svcIP, '80']
         def prodChecker():
-            for ix in range(0, 5):
+            for ix in range(0, 3):
                 resp2 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "prod",
                               command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
                 logging.debug("prod: {}".format(resp2))
                 if "open" not in resp2:
                     return resp2
+                lbWorkaround()
 
             return ""
 
@@ -158,13 +176,15 @@ class TestNetworkPolicy(object):
                     if clientIP in line:
                         print(line)
 
-        tutils.assertEventually(prodChecker, 1, 120, npInspector)
+        tutils.assertEventually(prodChecker, 1, 5, npInspector)
+        tutils.tcLog("Verify dev still can't access the svc")
         # and dev can't
-        for ix in range(0, 5):
+        for ix in range(0, 3):
             resp3 = stream(v1.connect_get_namespaced_pod_exec, "client-pod", "dev",
                           command=cmd2, stderr=True, stdin=False, stdout=True, tty=False)
             logging.debug("dev: {}".format(resp3))
             assert "timed out" in resp3
+            lbWorkaround()
 
         # delete everything
         nv1 = client.NetworkingV1Api()
@@ -183,11 +203,28 @@ class TestNetworkPolicy(object):
         tutils.tcLog("Verify network policy flows are deleted")
         tutils.assertEventually(flowChecker, 1, 120)
 
+        tutils.scaleDep("default", "hostnames-dep", 0)
         for ns in nsList:
             v1.delete_namespace(ns, client.V1DeleteOptions()) # deletes the client-pod too
 
         v1.delete_namespaced_service("hostnames-svc", "default", client.V1DeleteOptions())
         av1 = client.AppsV1Api()
         av1.delete_namespaced_deployment("hostnames-dep", "default", client.V1DeleteOptions())
+        def delChecker():
+            dList = av1.list_namespaced_deployment("default")
+            for dep in dList.items:
+                if dep.metadata.name == "hostnames-dep":
+                    return "hostnames-dep still present"
+            sList = v1.list_namespaced_service("default")
+            for svc in sList.items:
+                if svc.metadata.name == "hostnames-svc":
+                    return "hostnames-svc still present"
+            for ns in nsList:
+                if tutils.namespaceExists(ns):
+                    return "{} exists".format(ns)
+            return ""
+
+        tutils.tcLog("Verify svc/dep is deleted")
+        tutils.assertEventually(delChecker, 1, 40)
         
 
