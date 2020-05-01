@@ -225,6 +225,6 @@ class TestNetworkPolicy(object):
             return ""
 
         tutils.tcLog("Verify svc/dep is deleted")
-        tutils.assertEventually(delChecker, 1, 40)
+        tutils.assertEventually(delChecker, 2, 40)
         
 

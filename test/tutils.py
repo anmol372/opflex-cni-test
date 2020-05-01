@@ -1,8 +1,9 @@
 from time import sleep
 import logging
 import os
-from kubernetes import client
+from kubernetes import client, utils
 from kubernetes.stream import stream
+from kubernetes.client.rest import ApiException
 
 def assertEventually(checker, delay, count, inspector=None):
     ix = 0
@@ -172,6 +173,9 @@ def setupNodeRouting(podName, nodeName, externIP, undo=False):
     netmask = "255.255.0.0"
     subnet = "11.3.0.0/16"
     setup_cmds = [
+                    "iptables -t nat -D POSTROUTING -d 8.8.8.8 -j MASQUERADE",
+                    "iptables -D FORWARD -i veth_host -j ACCEPT",
+                    "iptables -A FORWARD -i veth_host -j ACCEPT",
                     "iptables -t nat -I POSTROUTING -d 8.8.8.8 -j MASQUERADE",
                     "ifconfig veth_host {} netmask {}".format(gwIP, netmask),
                     "arp -s {} {}".format(podIP, pgwMac),
@@ -192,13 +196,13 @@ def setupNodeRouting(podName, nodeName, externIP, undo=False):
     else:
         todo_cmds = setup_cmds
     systemNs = getSysNs()
-    pod_list = v1.list_namespaced_pod(systemNs, label_selector="name=aci-containers-host")
+    pod_list = v1.list_namespaced_pod("kube-system", label_selector="name=nettools")
     for pod in pod_list.items:
         if pod.spec.node_name == nodeName:
             for c in todo_cmds:
                 cmd = c.split(" ")
                 print("Executing {}".format(cmd))
-                resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, systemNs, container="aci-containers-host", command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
+                resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, "kube-system", command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
                 if resp != "":
                     print("{} gave resp: {}".format(cmd, resp))
     
@@ -238,7 +242,28 @@ def deletePod(ns, name):
     v1.delete_namespaced_pod(name, ns, client.V1DeleteOptions())
     checkPodDeleted(v1, ns, name, 60) 
 
+def getGwIP():
+    ns = getSysNs()
+    v1 = client.CoreV1Api()
+    c_pods = []
+    pod_list = v1.list_namespaced_pod(ns, label_selector="name=aci-containers-controller")
+    for pod in pod_list.items:
+        if pod.status.phase == "Running":
+            c_pods.append(pod.metadata.name)
+
+    gbp_cmd = ['cat', '"/usr/local/etc/aci-containers/gbp-server.conf"']
+    for pod in c_pods:
+        gbp_resp = stream(v1.connect_get_namespaced_pod_exec, pod, ns, command=gbp_cmd,
+                          stderr=True, stdin=False, stdout=True, tty=False)
+        for line in gbp_resp.splitlines():
+            if "pod-subnet" in line:
+                snet = line.split("\"")[3]
+                return snet.split("/")[0]
+    return ""
+                          
+
 def checkGwFlows(gwIP):
+    print("gwIP: {}".format(gwIP))
     ns = getSysNs()
     v1 = client.CoreV1Api()
     ovs_pods = []
@@ -276,3 +301,25 @@ def scaleDep(ns, name, replicas):
         return "expected {} replicas, got {}".format(replicas, curr.status.ready_replicas)
 
     assertEventually(scaleChecker, 1, 30)
+
+def setupNettools():
+    v1 = client.CoreV1Api()
+    n_list = v1.list_node()
+    node_count = len(n_list.items)
+    k8s_client = client.ApiClient()
+    try:
+        utils.create_from_yaml(k8s_client, "yamls/tools/tool_ds.yaml")
+    except ApiException as e:
+        logging.debug("{} - ignored".format(e.reason))
+
+    def readyChecker():
+        pod_list = v1.list_namespaced_pod("kube-system", label_selector="name=nettools")
+        if len(pod_list.items) != node_count:
+            return "node count: {} pod count {}".format(node_count, len(pod_list.items))
+
+        for pod in pod_list.items:
+            if pod.status.phase != "Running":
+                return "pod {} status is {}".format(pod.metadata.name, pod.status.phase)
+
+        return ""
+    assertEventually(readyChecker, 2, 30)

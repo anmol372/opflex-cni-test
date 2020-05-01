@@ -70,6 +70,8 @@ class TestExtPol(object):
     def test_policy(object):
         tutils.tcLog("Verify GW flows are present")
         tutils.checkGwFlows("11.3.0.1")
+        tutils.tcLog("Setup nettools")
+        tutils.setupNettools()
         tutils.tcLog("Setup contracts, epgs and external EP")
         v1 = client.CoreV1Api()
         createCRD("contracts", "tcp-53")

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nettools
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: nettools
+  template:
+    metadata:
+      labels:
+        name: nettools
+    spec:
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      containers:
+        - name: apline-nettools
+          image: noirolabs/alpine-base
+          imagePullPolicy: Always
+          securityContext:
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - NET_ADMIN
+          command:
+            - sh
+            - -c
+            - "exec tail -f /dev/null"
