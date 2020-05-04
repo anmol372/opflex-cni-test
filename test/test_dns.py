@@ -14,13 +14,6 @@ config.load_kube_config()
 configuration.assert_hostname = False
 k8s_client = client.ApiClient()
 
-def getPodIPs(kapi, ns, selector):
-    ips = []
-    pod_list = kapi.list_namespaced_pod(ns, label_selector=selector)
-    for pod in pod_list.items:
-        ips.append(pod.status.pod_ip)
-    return ips
-
 def createNsSvc(ns, name):
     v1 = client.CoreV1Api()
     with open(path.abspath(nameToYaml(name))) as f:

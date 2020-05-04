@@ -323,3 +323,11 @@ def setupNettools():
 
         return ""
     assertEventually(readyChecker, 2, 30)
+
+def getPodIPs(ns, selector):
+    v1 = client.CoreV1Api()
+    ips = []
+    pod_list = v1.list_namespaced_pod(ns, label_selector=selector)
+    for pod in pod_list.items:
+        ips.append(pod.status.pod_ip)
+    return ips

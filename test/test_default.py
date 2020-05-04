@@ -27,13 +27,6 @@ def checkRCStatus(kapi, replicas):
     logging.debug("busybox: Not ready yet...")
     return "rc busybox not found"
 
-def getPodIPs(kapi, ns, selector):
-    ips = []
-    pod_list = kapi.list_namespaced_pod(ns, label_selector=selector)
-    for pod in pod_list.items:
-        ips.append(pod.status.pod_ip)
-    return ips
-
 def getNodeIPs(kapi):
     ips = []
     node_list = kapi.list_node()
@@ -97,7 +90,7 @@ class TestConnectivity(object):
         tutils.assertEventually(podChecker, 1, 60)
 
         # verify connectivity
-        pod_ips = getPodIPs(k8s_api, "default", "app=busybox")
+        pod_ips = tutils.getPodIPs("default", "app=busybox")
 
         tutils.tcLog("Verify EPs are populated")
         def remEPChecker():

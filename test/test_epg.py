@@ -21,13 +21,6 @@ def checkRCStatus(kapi, replicas):
     logging.debug("busybox: Not ready yet...")
     return "Expected {} ready replicas, got {}".format(replicas, s.status.ready_replicas)
 
-def getPodIPs(kapi, ns, selector):
-    ips = []
-    pod_list = kapi.list_namespaced_pod(ns, label_selector=selector)
-    for pod in pod_list.items:
-        ips.append(pod.status.pod_ip)
-    return ips
-
 # yaml filename must match the object name, per our convention
 def nameToYaml(name):
     return "yamls/{}.yaml".format(name)
@@ -105,7 +98,7 @@ class TestEPG(object):
         tutils.assertEventually(podChecker, 1, 60)
 
         # verify connectivity
-        ips = getPodIPs(k8s_api, "default", "app=busybox")
+        ips = tutils.getPodIPs("default", "app=busybox")
         pod_list = k8s_api.list_namespaced_pod("default", label_selector="app=busybox")
         pod = next(iter(pod_list.items), None)
         assert pod != None
