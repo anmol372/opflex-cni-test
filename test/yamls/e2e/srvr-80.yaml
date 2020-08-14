@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: srvr-80
+  labels:
+    app: simple
+spec:
+  containers:
+  - name: pod-srvr80
+    image: alpine
+    command: ["/bin/sh"]
+    args: ["-c", "nc -l -p 80"]
