@@ -160,58 +160,13 @@ def verifyAgentContracts(contracts, expect):
 
     return ret_str
 
-def setupNodeRouting(podName, nodeName, externIP, undo=False):
-    v1 = client.CoreV1Api()
-    resp = v1.read_namespaced_pod(podName, "default")
-    if resp.spec.node_name != nodeName:
-        print("pod {} is on node {} exp: {}, skip routing setup".format(podName, resp.spec.node_name, nodeName))    
-        return
-    podIP = resp.status.pod_ip
-    nodeIP = resp.status.host_ip
-    pgwMac = "00:22:bd:f8:19:ff"
-    gwIP = "11.3.0.1"
-    netmask = "255.255.0.0"
-    subnet = "11.3.0.0/16"
-    setup_cmds = [
-                    "iptables -t nat -D POSTROUTING -d 8.8.8.8 -j MASQUERADE",
-                    "iptables -D FORWARD -i veth_host -j ACCEPT",
-                    "iptables -A FORWARD -i veth_host -j ACCEPT",
-                    "iptables -t nat -I POSTROUTING -d 8.8.8.8 -j MASQUERADE",
-                    "ifconfig veth_host {} netmask {}".format(gwIP, netmask),
-                    "arp -s {} {}".format(podIP, pgwMac),
-                    "ip route del {}".format(subnet),
-                    "ip route add {} via {} dev veth_host proto kernel scope link".format(subnet, gwIP),
-                 ]
-    undo_cmds = [
-                    "iptables -t nat -D POSTROUTING -d 8.8.8.8 -j MASQUERADE",
-                    "arp -d {}".format(podIP),
-                    "ifconfig veth_host 0.0.0.0",
-                    "ip route del {}".format(subnet),
-                    "ip route add {} dev veth_host proto kernel scope link src {}".format(subnet, nodeIP),
-                 ]
-    # exec into the hostagent to set up routing
-    todo_cmds = [[]]
-    if undo:
-        todo_cmds = undo_cmds
-    else:
-        todo_cmds = setup_cmds
-    systemNs = getSysNs()
-    pod_list = v1.list_namespaced_pod("kube-system", label_selector="name=nettools")
-    for pod in pod_list.items:
-        if pod.spec.node_name == nodeName:
-            for c in todo_cmds:
-                cmd = c.split(" ")
-                print("Executing {}".format(cmd))
-                resp = stream(v1.connect_get_namespaced_pod_exec, pod.metadata.name, "kube-system", command=cmd, stderr=True, stdin=False, stdout=True, tty=False)
-                if resp != "":
-                    print("{} gave resp: {}".format(cmd, resp))
-    
 def verifyPing(podName, ns, dest, expSuccess=True):
     ping_cmd = ['ping', '-c', '3', '-W', '1', dest]
     v1 = client.CoreV1Api()
     def pingChecker():
         resp = stream(v1.connect_get_namespaced_pod_exec, podName, ns,
                               command=ping_cmd, stderr=True, stdin=False, stdout=True, tty=False)
+        print("=>Resp is {}".format(resp))
         if expSuccess:
             if "3 packets received" not in resp:
                 return "3 packets not received"
@@ -303,20 +258,18 @@ def scaleDep(ns, name, replicas):
 
     assertEventually(scaleChecker, 1, 30)
 
-def setupNettools():
+def createTesterDs():
     v1 = client.CoreV1Api()
-    n_list = v1.list_node()
-    node_count = len(n_list.items)
     k8s_client = client.ApiClient()
     try:
-        utils.create_from_yaml(k8s_client, "yamls/tools/tool_ds.yaml")
+        utils.create_from_yaml(k8s_client, "yamls/tester-ds.yaml")
     except ApiException as e:
         logging.debug("{} - ignored".format(e.reason))
 
     def readyChecker():
-        pod_list = v1.list_namespaced_pod("kube-system", label_selector="name=nettools")
-        if len(pod_list.items) != node_count:
-            return "node count: {} pod count {}".format(node_count, len(pod_list.items))
+        pod_list = v1.list_namespaced_pod("default", label_selector="name=tester")
+        if len(pod_list.items) < 2:
+            return "Not enough pods"
 
         for pod in pod_list.items:
             if pod.status.phase != "Running":
@@ -324,6 +277,24 @@ def setupNettools():
 
         return ""
     assertEventually(readyChecker, 2, 30)
+    pod_list = v1.list_namespaced_pod("default", label_selector="name=tester")
+    pod_names = []
+    for pod in pod_list.items:
+        pod_names.append(pod.metadata.name)
+    return pod_names
+
+def deleteTesterDs():
+    av1 = client.AppsV1Api()
+    body = client.V1DeleteOptions()
+    av1.delete_namespaced_daemon_set("tester", "default", body=body)
+    v1 = client.CoreV1Api()
+    def doneChecker():
+        pod_list = v1.list_namespaced_pod("default", label_selector="name=tester")
+        if len(pod_list.items) != 0:
+            return "still present"
+        return ""
+
+    assertEventually(doneChecker, 2, 30)
 
 def getPodIPs(ns, selector):
     v1 = client.CoreV1Api()

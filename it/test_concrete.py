@@ -3,6 +3,7 @@ import os
 import json
 import paramiko
 import base64
+import ipaddress
 from acc_provision import acc_provision, apic_provision
 import logging
 import tutils
@@ -10,8 +11,8 @@ from time import sleep
 from kubernetes import client, config
 
 tutils.logSetup()
-#config.load_kube_config()
-#v1 = client.CoreV1Api()
+config.load_kube_config()
+v1 = client.CoreV1Api()
 
 def setup_config():
     prov_inp_file = os.getenv('PROV_INP_FILE', "./provision_input.yaml")
@@ -69,10 +70,14 @@ class TestBasic(object):
         qry = '/api/class/hcl3CniTep.json'
         resp = object.apic.get(path=qry)
         resJson = json.loads(resp.content)
-        print(resJson)
+        tepList = []
+        for mo in resJson['imdata']:
+            addr = mo['hcl3CniTep']['attributes']['addr']
+            tep = addr.split("/")[0]
+            tepList.append(tep)
+        return tepList
 
     def verifyCsr(object, csr):
-#        print(csr)
         dn = csr["hcloudCsr"]["attributes"]["dn"]
         qry = '/api/mo/{}.json?query-target=subtree&target-subtree-class=hcloudEndPointOper&query-target-filter=and(ne(hcloudEndPointOper.publicIpv4Addr,"0.0.0.0"))'.format(dn)
         resp = object.apic.get(path=qry)
@@ -84,6 +89,7 @@ class TestBasic(object):
                     att = epOper["hcloudEndPointOper"]["attributes"]
                     operDn = att["dn"]
                     if "nwif-0" in operDn:
+                        print("CSR IP: {}".format(att["publicIpv4Addr"]))
                         return att["publicIpv4Addr"]
             return None
         csrIP = getCsrIP()
@@ -94,10 +100,47 @@ class TestBasic(object):
         csr_c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         pw = object.config["aci_config"]["apic_login"]["password"]
         csr_c.connect(csrIP, username='admin', password=pw)
-        stdin, stdout, stderr = csr_c.exec_command('show ip int brief')
+        stdin, stdout, stderr = csr_c.exec_command('show run | sec interface Tunn')
         for line in stdout:
-            print('... ' + line.strip('\n'))
+            print('|| ' + line.strip('\n'))
         csr_c.close()
+        object.verifyCsrRoutes(csr_c, csrIP)
+
+    def verifyCsrRoutes(object, csr_c, csrIP):
+        def gwToSubnet(gw):
+            u_gw = '{}'.format(str(gw))
+            nw = str(ipaddress.ip_network(u_gw, strict=False))
+            return nw.split("/")[0]
+
+        pw = object.config["aci_config"]["apic_login"]["password"]
+        csr_c.connect(csrIP, username='admin', password=pw)
+        stdin, stdout, stderr = csr_c.exec_command('show run | sec ip route')
+        ulCidr = gwToSubnet(object.config["net_config"]["machine_cidr"])
+        olCidr = gwToSubnet(object.config["net_config"]["pod_subnet"])
+        vmCidr = os.getenv('VM_CIDR', "121.1.0.0")
+        reqd_routes = [ulCidr, olCidr, vmCidr]
+        print(reqd_routes)
+        for line in stdout:
+            if len(reqd_routes) == 0:
+                break
+
+            for route in reqd_routes:
+                if route in line:
+                    reqd_routes.remove(route)
+                    break
+            #print('++ ' + line.strip('\n'))
+        csr_c.close()
+        assert len(reqd_routes) == 0
+
+    def verifyULConnectivity(object, tepList):
+        tutils.tcLog("Create pods in host ns")
+        pods = tutils.createTesterDs()
+        tutils.tcLog("Verify connectivity from host ns to teps {}".format(tepList))
+        for pod in pods:
+            for tep in tepList:
+                tutils.verifyPing(pod, "default", tep)
+        tutils.tcLog("Delete pods in host ns")
+        tutils.deleteTesterDs()
 
     def test_concrete(object):
         object.setup()
@@ -113,6 +156,7 @@ class TestBasic(object):
         if nodeCount == 0 or csrCount == 0:
             print("No further tests possible with these csr/compHv count")
             return
-        object.getCniTep() 
+        tepList = object.getCniTep() 
+        object.verifyULConnectivity(tepList)
         for csr in csrList:
             object.verifyCsr(csr)

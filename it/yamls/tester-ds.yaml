@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    network-plugin: aci-containers
+  name: tester
+spec:
+  selector:
+    matchLabels:
+      name: tester
+  template:
+    metadata:
+      labels:
+        name: tester
+    spec:
+      containers:
+      - env:
+        - name: http_proxy
+          value: ""
+        - name: https_proxy
+          value: ""
+        name: tester
+        image: contiv/util-busybox
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/sh
+          - -c
+          - "exec tail -f /dev/null"
+      hostNetwork: true
