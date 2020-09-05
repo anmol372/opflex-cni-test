@@ -1,6 +1,7 @@
 from time import sleep
 import logging
 import os
+import json
 from kubernetes import client, utils
 from kubernetes.stream import stream
 from kubernetes.client.rest import ApiException
@@ -294,7 +295,7 @@ def deleteTesterDs():
             return "still present"
         return ""
 
-    assertEventually(doneChecker, 2, 30)
+    #assertEventually(doneChecker, 2, 30)
 
 def getPodIPs(ns, selector):
     v1 = client.CoreV1Api()
@@ -303,3 +304,22 @@ def getPodIPs(ns, selector):
     for pod in pod_list.items:
         ips.append(pod.status.pod_ip)
     return ips
+
+def read_gbps_tunnel_ids():
+    api_c = client.ApiClient()
+    custom_c = client.CustomObjectsApi(api_c)
+    api_response = custom_c.get_namespaced_custom_object_status("aci.aw", "v1", "kube-system", "gbpsstates", "gbp-server")
+    #print(api_response)
+    return api_response['status']['tunnel-ids']
+
+def read_vrf_encap_id():
+    v1 = client.CoreV1Api()
+    resp = v1.read_namespaced_config_map("aci-containers-config", getCniNs())
+    gbp_cfg = json.loads(resp.data['gbp-server-config'])
+    return gbp_cfg['vrf-encap-id']
+
+def getCniNs():
+    if namespaceExists("aci-containers-system"):
+        return "aci-containers-system"
+
+    return "kube-system"

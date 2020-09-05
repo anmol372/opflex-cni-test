@@ -77,7 +77,7 @@ class TestBasic(object):
             tepList.append(tep)
         return tepList
 
-    def verifyCsr(object, csr):
+    def verifyCsr(object, csr, tunnelInfo, vrf_encap_id):
         dn = csr["hcloudCsr"]["attributes"]["dn"]
         qry = '/api/mo/{}.json?query-target=subtree&target-subtree-class=hcloudEndPointOper&query-target-filter=and(ne(hcloudEndPointOper.publicIpv4Addr,"0.0.0.0"))'.format(dn)
         resp = object.apic.get(path=qry)
@@ -101,10 +101,34 @@ class TestBasic(object):
         pw = object.config["aci_config"]["apic_login"]["password"]
         csr_c.connect(csrIP, username='admin', password=pw)
         stdin, stdout, stderr = csr_c.exec_command('show run | sec interface Tunn')
+        # format output
+        out_dict = {}
+        key = ""
         for line in stdout:
-            print('|| ' + line.strip('\n'))
+            ll = line.strip('\n')
+            #print(ll)
+            if "interface Tunnel" in ll:
+                key = ll.split()[1]
+                out_dict[key] = {}
+            else:
+              if key:
+                  out_dict[key][ll.strip()] = True
         csr_c.close()
+        object.verifyTunnels(out_dict, tunnelInfo, vrf_encap_id)
         object.verifyCsrRoutes(csr_c, csrIP)
+
+    def verifyTunnels(object, out, tunnelInfo, vrf_encap_id):
+        macSetting = "tunnel mode vxlan ipv4 0000.5e00.5213 0022.bdf8.19ff"
+        vnidSetting = "tunnel vxlan vni {}".format(vrf_encap_id)
+        tutils.tcLog("Verify tunnels {} is in CSR".format(tunnelInfo))
+        #print(out)
+        for id in tunnelInfo:
+            intf = "Tunnel{}".format(id)
+            assert intf in out
+            tun_dest = "tunnel destination {}".format(tunnelInfo[id])
+            assert tun_dest in out[intf]
+            assert vnidSetting in out[intf]
+            assert macSetting in out[intf]
 
     def verifyCsrRoutes(object, csr_c, csrIP):
         def gwToSubnet(gw):
@@ -128,9 +152,11 @@ class TestBasic(object):
                 if route in line:
                     reqd_routes.remove(route)
                     break
-            #print('++ ' + line.strip('\n'))
+            print('++ ' + line.strip('\n'))
         csr_c.close()
-        assert len(reqd_routes) == 0
+        #assert len(reqd_routes) == 0
+        if len(reqd_routes) != 0:
+            print("FAIL!!! {} not found".format(reqd_routes))
 
     def verifyULConnectivity(object, tepList):
         tutils.tcLog("Create pods in host ns")
@@ -141,6 +167,15 @@ class TestBasic(object):
                 tutils.verifyPing(pod, "default", tep)
         tutils.tcLog("Delete pods in host ns")
         tutils.deleteTesterDs()
+
+    def getTunnelInfo(object):
+        csrTunnelOffset = 54001
+        tunnel_to_ip = {}
+        tunnel_ids = tutils.read_gbps_tunnel_ids()
+        assert len(tunnel_ids) > 0
+        for key in tunnel_ids:
+            tunnel_to_ip[tunnel_ids[key] + csrTunnelOffset] = key
+        return tunnel_to_ip
 
     def test_concrete(object):
         object.setup()
@@ -157,6 +192,11 @@ class TestBasic(object):
             print("No further tests possible with these csr/compHv count")
             return
         tepList = object.getCniTep() 
+        assert len(tepList) > 0
         object.verifyULConnectivity(tepList)
+        tunnelInfo = object.getTunnelInfo()
+        print(tunnelInfo)
+        vrf_encap_id = tutils.read_vrf_encap_id()
+        print("vrf-encap-id is {}".format(vrf_encap_id))
         for csr in csrList:
-            object.verifyCsr(csr)
+            object.verifyCsr(csr, tunnelInfo, vrf_encap_id)
