@@ -114,13 +114,14 @@ class TestBasic(object):
               if key:
                   out_dict[key][ll.strip()] = True
         csr_c.close()
+        tutils.tcLog("Verify tunnels {} is in CSR".format(tunnelInfo))
         object.verifyTunnels(out_dict, tunnelInfo, vrf_encap_id)
+        tutils.tcLog("Verify routes in CSR({})".format(csrIP))
         object.verifyCsrRoutes(csr_c, csrIP)
 
     def verifyTunnels(object, out, tunnelInfo, vrf_encap_id):
         macSetting = "tunnel mode vxlan ipv4 0000.5e00.5213 0022.bdf8.19ff"
         vnidSetting = "tunnel vxlan vni {}".format(vrf_encap_id)
-        tutils.tcLog("Verify tunnels {} is in CSR".format(tunnelInfo))
         #print(out)
         for id in tunnelInfo:
             intf = "Tunnel{}".format(id)
@@ -161,7 +162,6 @@ class TestBasic(object):
     def verifyULConnectivity(object, tepList):
         tutils.tcLog("Create pods in host ns")
         pods = tutils.createDs("ul-tester")
-        tutils.tcLog("Verify connectivity from host ns to teps {}".format(tepList))
         for pod in pods:
             for tep in tepList:
                 tutils.verifyPing(pod, "default", tep)
@@ -178,31 +178,60 @@ class TestBasic(object):
         return tunnel_to_ip
 
     def getVmIP(object, epg):
-        # https://54.241.80.83/visore.html#/&class=hcloudRtEpToSecurityGroup&propFilter=query-target-filter=and(wcard(hcloudRtEpToSecurityGroup.dn,%22cloudepg-test-vm-epg%22))
         tutils.tcLog("Get vm ip for epg {}".format(epg))
         qry = '/api/class/hcloudRtEpToSecurityGroup.json?query-target-filter=and(wcard(hcloudRtEpToSecurityGroup.dn,"{}"))'.format(epg)
         resp = object.apic.get(path=qry)
-        epDn = object.getFromResp(resp, 'hcloudRtEpToSecurityGroup', 'tDn')
-        print("epDn: {}".format(epDn))
-        qry = '/api/mo/{}.json'.format(epDn)
+        epDns = object.getFromResp(resp, 'hcloudRtEpToSecurityGroup', 'tDn')
+        assert len(epDns) > 0
+        print("epDn: {}".format(epDns[0]))
+        qry = '/api/mo/{}.json'.format(epDns[0])
         resp = object.apic.get(path=qry)
-        epIP = object.getFromResp(resp, 'hcloudEndPoint', 'primaryIpV4Addr')
-        return epIP
+        epIPs = object.getFromResp(resp, 'hcloudEndPoint', 'primaryIpV4Addr')
+        assert len(epIPs) > 0
+        return epIPs[0]
 
     def getFromResp(object, resp, moClass, prop):
+        propList = []
         resJson = json.loads(resp.content)
         #print(resJson)
         for rs in resJson['imdata']:
             if moClass in rs:
                 attr = rs[moClass]['attributes']
                 if prop in attr:
-                    return attr[prop]
-        return None
+                    propList.append(attr[prop])
+        return propList
     
+    def getAllEpIPs(object, epg):
+        tutils.tcLog("Get all hcloudEP ip for epg {}".format(epg))
+        ip_dict = {}
+        qry = '/api/class/hcloudRtEpToSecurityGroup.json?query-target-filter=and(wcard(hcloudRtEpToSecurityGroup.dn,"{}]"))'.format(epg)
+        resp = object.apic.get(path=qry)
+        epDns = object.getFromResp(resp, 'hcloudRtEpToSecurityGroup', 'tDn')
+        for epDn in epDns:
+            qry = '/api/mo/{}.json'.format(epDn)
+            resp = object.apic.get(path=qry)
+            epIPs = object.getFromResp(resp, 'hcloudEndPoint', 'primaryIpV4Addr')
+            if len(epIPs) > 0:
+                ep_ip = epIPs[0].split("/")[0]
+                ip_dict[ep_ip] = True
+        return ip_dict
+
+    def verifyCapicEPs(object, pods, epg):
+        podIPs = []
+        for pod in pods:
+            p_ip = tutils.getPodIP(pod, "default")
+            podIPs.append(p_ip)
+        assert len(podIPs) > 0
+
+        epIPs = object.getAllEpIPs(epg)
+        assert len(epIPs) == len(podIPs)
+        for p_ip in podIPs:
+            del epIPs[p_ip]
+
     def verifyOLConnectivity(object, vmIP):
         tutils.tcLog("Create pods in epg-a")
         pods = tutils.createDs("ol-tester")
-        tutils.tcLog("Verify connectivity from epg-a to {}".format(vmIP))
+        object.verifyCapicEPs(pods, "epg-a")
         for pod in pods:
             tutils.verifyPing(pod, "default", vmIP)
         tutils.tcLog("Delete pods in epg-a")
@@ -224,7 +253,10 @@ class TestBasic(object):
             return
         tepList = object.getCniTep() 
         assert len(tepList) > 0
+
+        tutils.tcLog("Verify connectivity from host ns to teps {}".format(tepList))
         object.verifyULConnectivity(tepList)
+
         tunnelInfo = object.getTunnelInfo()
         print(tunnelInfo)
         vrf_encap_id = tutils.read_vrf_encap_id()
@@ -235,4 +267,6 @@ class TestBasic(object):
         vmIP = object.getVmIP("test-vm-epg")
         print("vmIP: {}".format(vmIP))
         assert vmIP
+
+        tutils.tcLog("Verify connectivity from epg-a to {}".format(vmIP))
         object.verifyOLConnectivity(vmIP)
