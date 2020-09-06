@@ -259,16 +259,17 @@ def scaleDep(ns, name, replicas):
 
     assertEventually(scaleChecker, 1, 30)
 
-def createTesterDs():
+def createDs(name):
     v1 = client.CoreV1Api()
     k8s_client = client.ApiClient()
     try:
-        utils.create_from_yaml(k8s_client, "yamls/tester-ds.yaml")
+        utils.create_from_yaml(k8s_client, "yamls/{}.yaml".format(name))
     except ApiException as e:
         logging.debug("{} - ignored".format(e.reason))
 
+    lSel = "name={}".format(name)
     def readyChecker():
-        pod_list = v1.list_namespaced_pod("default", label_selector="name=tester")
+        pod_list = v1.list_namespaced_pod("default", label_selector=lSel)
         if len(pod_list.items) < 2:
             return "Not enough pods"
 
@@ -278,24 +279,25 @@ def createTesterDs():
 
         return ""
     assertEventually(readyChecker, 2, 30)
-    pod_list = v1.list_namespaced_pod("default", label_selector="name=tester")
+    pod_list = v1.list_namespaced_pod("default", label_selector=lSel)
     pod_names = []
     for pod in pod_list.items:
         pod_names.append(pod.metadata.name)
     return pod_names
 
-def deleteTesterDs():
+def deleteDs(name):
+    lSel = "name={}".format(name)
     av1 = client.AppsV1Api()
     body = client.V1DeleteOptions()
-    av1.delete_namespaced_daemon_set("tester", "default", body=body)
+    av1.delete_namespaced_daemon_set(name, "default", body=body)
     v1 = client.CoreV1Api()
     def doneChecker():
-        pod_list = v1.list_namespaced_pod("default", label_selector="name=tester")
+        pod_list = v1.list_namespaced_pod("default", label_selector=lSel)
         if len(pod_list.items) != 0:
             return "still present"
         return ""
 
-    #assertEventually(doneChecker, 2, 30)
+    assertEventually(doneChecker, 2, 45)
 
 def getPodIPs(ns, selector):
     v1 = client.CoreV1Api()

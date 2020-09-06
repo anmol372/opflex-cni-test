@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    network-plugin: aci-containers
+  name: ol-tester
+spec:
+  selector:
+    matchLabels:
+      name: ol-tester
+  template:
+    metadata:
+      annotations:
+        "opflex.cisco.com/endpoint-group": '{"policy-space":"csrtest","name":"epg-a"}'
+      labels:
+        name: ol-tester
+    spec:
+      containers:
+      - env:
+        - name: http_proxy
+          value: ""
+        - name: https_proxy
+          value: ""
+        name: ol-tester
+        image: contiv/util-busybox
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/sh
+          - -c
+          - "exec tail -f /dev/null"
