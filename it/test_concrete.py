@@ -205,7 +205,7 @@ class TestBasic(object):
         tutils.tcLog("Verify connectivity from epg-a to {}".format(vmIP))
         for pod in pods:
             tutils.verifyPing(pod, "default", vmIP)
-        tutils.tcLog("Delete pods in host ns")
+        tutils.tcLog("Delete pods in epg-a")
         tutils.deleteDs("ol-tester")
 
     def test_concrete(object):

@@ -162,6 +162,8 @@ def verifyAgentContracts(contracts, expect):
     return ret_str
 
 def verifyPing(podName, ns, dest, expSuccess=True):
+    pod_ip = getPodIP(podName, ns)
+    print("ping: {} -> {}".format(pod_ip, dest))
     ping_cmd = ['ping', '-c', '3', '-W', '1', dest]
     v1 = client.CoreV1Api()
     def pingChecker():
