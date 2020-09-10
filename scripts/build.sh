@@ -1,24 +1,21 @@
 #!/bin/bash
-set e
+: ${DOCKER_HUB_ID:="1.100.201.1:5000"}
+: ${TAG:="ci_test"}
+set -e
 if [ -z "$SKIP_CLONE" ]
 then 
   git clone https://github.com/noironetworks/aci-containers
 fi
 cd aci-containers
 make go-build
-export DOCKER_HUB_ID=1.100.201.1:5000
 make container-gbpserver
-docker tag 1.100.201.1:5000/gbp-server 1.100.201.1:5000/gbp-server:ci_test
-docker tag 1.100.201.1:5000/gbp-server jojimt/gbp-server:ci_test
-docker push 1.100.201.1:5000/gbp-server:ci_test
-docker push jojimt/gbp-server:ci_test
+docker tag $DOCKER_HUB_ID/gbp-server $DOCKER_HUB_ID/gbp-server:$TAG
+docker tag $DOCKER_HUB_ID/gbp-server-batch $DOCKER_HUB_ID/gbp-server-batch:$TAG
+docker push $DOCKER_HUB_ID/gbp-server:$TAG
+docker push $DOCKER_HUB_ID/gbp-server-batch:$TAG
 make container-host
-docker tag 1.100.201.1:5000/aci-containers-host 1.100.201.1:5000/aci-containers-host:ci_test
-docker tag 1.100.201.1:5000/aci-containers-host jojimt/aci-containers-host:ci_test
-docker push 1.100.201.1:5000/aci-containers-host:ci_test
-docker push jojimt/aci-containers-host:ci_test
+docker tag $DOCKER_HUB_ID/aci-containers-host $DOCKER_HUB_ID/aci-containers-host:$TAG
+docker push $DOCKER_HUB_ID/aci-containers-host:$TAG
 make container-controller
-docker tag 1.100.201.1:5000/aci-containers-controller 1.100.201.1:5000/aci-containers-controller:ci_test
-docker tag 1.100.201.1:5000/aci-containers-controller jojimt/aci-containers-controller:ci_test
-docker push 1.100.201.1:5000/aci-containers-controller:ci_test
-docker push jojimt/aci-containers-controller:ci_test
+docker tag $DOCKER_HUB_ID/aci-containers-controller $DOCKER_HUB_ID/aci-containers-controller:$TAG
+docker push $DOCKER_HUB_ID/aci-containers-controller:$TAG
