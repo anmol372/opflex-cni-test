@@ -263,6 +263,7 @@ def getGwIP():
                           
 
 def checkGwFlows(gwIP):
+    gwIP = os.getenv('GW_IP', gwIP)
     print("gwIP: {}".format(gwIP))
     ns = getSysNs()
     v1 = client.CoreV1Api()
