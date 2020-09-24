@@ -10,7 +10,7 @@ import os
 
 tutils.logSetup()
 configuration.assert_hostname = False
-config.load_kube_config()
+tutils.configSetup()
 configuration.assert_hostname = False
 kapi = client.ApiClient()
 v1 = client.CoreV1Api()

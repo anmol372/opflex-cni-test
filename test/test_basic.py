@@ -1,11 +1,13 @@
+import os
 import pytest
 import tutils
 import logging
 from time import sleep
+
 from kubernetes import client, config
 
 tutils.logSetup()
-config.load_kube_config()
+tutils.configSetup()
 v1 = client.CoreV1Api()
 
 def assertEventually(checker, delay, count):

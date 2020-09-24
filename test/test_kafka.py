@@ -11,7 +11,7 @@ import yaml
 
 tutils.logSetup()
 configuration.assert_hostname = False
-config.load_kube_config()
+tutils.configSetup()
 configuration.assert_hostname = False
 k8s_client = client.ApiClient()
 

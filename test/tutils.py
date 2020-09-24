@@ -1,9 +1,16 @@
 from time import sleep
 import logging
 import os
-from kubernetes import client, utils
+from kubernetes import client, utils, config
 from kubernetes.stream import stream
 from kubernetes.client.rest import ApiException
+
+def configSetup():
+    config.load_kube_config()
+    proxy_url = os.getenv('https_proxy', None)
+    if proxy_url:
+        print("Setting proxy: {}".format(proxy_url))
+        client.Configuration._default.proxy = proxy_url
 
 def assertEventually(checker, delay, count, inspector=None):
     ix = 0
