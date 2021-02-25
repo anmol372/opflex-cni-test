@@ -6,12 +6,48 @@ NUM_NODES=$2
 
 IP=`ip -4 addr show dev enp0s8 | grep inet | awk '{print $2}' | cut -f1 -d/`
 HOST_NAME=$(hostname -s)
-
+SERVICE_TOPOLOGY='true'
 echo "Executing inside node $HOST_NAME"
 echo "Provisioning $NUM_NODES nodes"
 
 echo "Starting kubeadm init"
-kubeadm init --apiserver-advertise-address=$IP --apiserver-cert-extra-sans=$IP --node-name $HOST_NAME --pod-network-cidr=$POD_NETWORK_CIDR
+KUBEADM_CONFIG=$(cat <<-EOF
+apiVersion: kubeadm.k8s.io/v1beta2
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  token: abcdef.0123456789abcdef
+  ttl: 24h0m0s
+  usages:
+  - signing
+  - authentication
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: $IP
+  bindPort: 6443
+nodeRegistration:
+  criSocket: /var/run/dockershim.sock
+  name: $HOST_NAME
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+---
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+networking:
+  dnsDomain: cluster.local
+  podSubnet: "11.3.0.0/16"
+controllerManager:
+  extraArgs:
+    feature-gates: ServiceTopology=true
+apiServer:
+  extraArgs:
+    feature-gates: ServiceTopology=true
+EOF
+)
+echo "${KUBEADM_CONFIG}"  > /tmp/config.yaml
+
+kubeadm init --config /tmp/config.yaml
 
 echo "Copying admin credendtials to vagrant user"
 sudo --user=vagrant mkdir -p /home/vagrant/.kube
