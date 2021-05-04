@@ -44,7 +44,7 @@ EOF
 
 mkdir -p /etc/docker
 cat <<EOF >/etc/docker/daemon.json
-{ "insecure-registries":["1.100.201.1:5000"] }
+{ "insecure-registries":["10.19.41.116:5000"] }
 EOF
 
 SCRIPT

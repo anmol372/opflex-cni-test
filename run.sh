@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 #setup a docker registry
 ./scripts/setup_registry.sh

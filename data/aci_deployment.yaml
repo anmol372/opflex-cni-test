@@ -514,7 +514,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: aci-containers-host
-          image: 1.100.201.1:5000/aci-containers-host:ci_test
+          image: noiro/aci-containers-host:5.1.1.1.1ae238a
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -550,7 +550,7 @@ spec:
               path: /status
               port: 8090
         - name: opflex-agent
-          image: challa/opflex:master
+          image: noiro/opflex:5.1.1.1.1ae238a
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -571,7 +571,7 @@ spec:
             - name: opflex-config-volume
               mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
         - name: opflex-server
-          image: challa/opflex-server:master
+          image: noiro/opflex-server:5.1.1.1.1ae238a
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -589,7 +589,7 @@ spec:
 #          args:
 #          - "--level=debug2"
         - name: mcast-daemon
-          image: challa/opflex:master
+          image: noiro/opflex:5.1.1.1.1ae238a
           command: ["/bin/sh"]
           args: ["/usr/local/bin/launch-mcastdaemon.sh"]
           imagePullPolicy: Always
@@ -663,7 +663,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: aci-containers-openvswitch
-          image: challa/openvswitch:master
+          image: noiro/openvswitch:5.1.1.1.1ae238a
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -739,7 +739,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: aci-gbpserver
-          image: 1.100.201.1:5000/gbp-server:ci_test
+          image: 10.19.41.116:5000/noiro/gbp-server:ci_test
           imagePullPolicy: Always
           volumeMounts:
             - name: kubeconfig
@@ -753,7 +753,7 @@ spec:
               value: /usr/local/etc/aci-containers/gbp-server.conf
 
         - name: aci-containers-controller
-          image: 1.100.201.1:5000/aci-containers-controller:ci_test
+          image: noiro/aci-containers-controller:5.1.1.1.1ae238a
           imagePullPolicy: Always
           volumeMounts:
             - name: controller-config-volume
