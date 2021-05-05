@@ -1,0 +1,36 @@
+#
+# Configuration for ACI overlay
+#
+
+#
+# Networks used by Kubernetes
+#
+net_config:
+  node_subnet: 1.100.201.1/24              # Subnet to use for nodes
+  pod_subnet: 11.3.0.1/21 # Subnet to use for Kubernetes Pods
+  extern_dynamic: 10.3.56.1/21       # Subnet to use for dynamically allocated external services
+  extern_static: 10.4.56.1/21        # Subnet to use for statically allocated external services
+  node_svc_subnet: 10.5.56.1/21          # Subnet to use for service graph
+  interface_mtu: 1400
+
+#
+#
+# Configuration for container registry
+# Update if a custom container registry has been setup
+#
+registry:
+  image_prefix: 10.19.41.116:5000/noiro
+  aci_containers_controller_version: kwai-test
+  aci_containers_host_version: kwai-test
+  cnideploy_version: kwai-test
+  opflex_agent_version: kwai-test
+  opflex_server_version: kwai-test
+  openvswitch_version: kwai-test
+  gbp_version: ci_test
+#
+# Enable/disable logging for ACI components on kubernetes
+#
+logging:
+  controller_log_level: debug
+  hostagent_log_level: debug
+  opflexagent_log_level: debug

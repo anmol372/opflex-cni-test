@@ -1,64 +1,422 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-    name: snatglobalinfos.aci.snat
+  name: epgs.aci.aw
 spec:
-    group: aci.snat
-    names:
-      kind: SnatGlobalInfo
-      listKind: SnatGlobalInfoList
-      plural: snatglobalinfos
-      singular: snatglobalinfo
-    scope: Namespaced
-    version: v1
+  group: aci.aw
+  names:
+    kind: Epg
+    listKind: EpgList
+    plural: epgs
+    singular: epg
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: Epg describes a group of network endpoints
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: EpgSpec is the spec for an epg
+            properties:
+              consumed-contracts:
+                items:
+                  type: string
+                type: array
+              name:
+                type: string
+              provided-contracts:
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-    name: snatlocalinfos.aci.snat
+  name: contracts.aci.aw
 spec:
-    group: aci.snat
-    names:
-      kind: SnatLocalInfo
-      listKind: SnatLocalInfoList
-      plural: snatlocalinfos
-      singular: snatlocalinfo
-    scope: Namespaced
-    version: v1
+  group: aci.aw
+  names:
+    kind: Contract
+    listKind: ContractList
+    plural: contracts
+    singular: contract
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: Contract describe a policy between two endpoint groups
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ContractSpec is the spec for a Contract resource
+            properties:
+              allow-list:
+                items:
+                  description: WLRules are implicit allow
+                  properties:
+                    ports:
+                      properties:
+                        end:
+                          type: integer
+                        start:
+                          type: integer
+                      type: object
+                    protocol:
+                      type: string
+                  type: object
+                type: array
+              name:
+                type: string
+            type: object
+        type: object
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-    name: snatpolicies.aci.snat
+  name: gbpsstates.aci.aw
 spec:
-    group: aci.snat
-    names:
-      kind: SnatPolicy
-      listKind: SnatPolicyList
-      plural: snatpolicies
-      singular: snatpolicy
-    scope: Namespaced
+  group: aci.aw
+  names:
+    kind: GBPSState
+    listKind: GBPSStateList
+    plural: gbpsstates
+    singular: gbpsstate
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
     subresources:
       status: {}
-    version: v1
+    schema:
+      openAPIV3Schema:
+        description: GBPSState describes the internal state of the GBP server
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          status:
+            description: GBPSStatus is the operational state for a gbpserver
+            properties:
+              class-ids:
+                additionalProperties:
+                  type: integer
+                type: object
+              tunnel-ids:
+                additionalProperties:
+                  format: int64
+                  type: integer
+                type: object
+            type: object
+        type: object
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-    name: nodeinfos.aci.snat
+  name: podifs.aci.aw
 spec:
-    group: aci.snat
-    names:
-      kind: NodeInfo
-      listKind: NodeInfoList
-      plural: nodeinfos
-      singular: nodeinfo
-    scope: Namespaced
+  group: aci.aw
+  names:
+    kind: PodIF
+    listKind: PodIFList
+    plural: podifs
+    singular: podif
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: PodIF describes a pod network interface
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          status:
+            description: PodIFStatus is the status of a PodIF
+            properties:
+              containerID:
+                type: string
+              epg:
+                type: string
+              ifname:
+                type: string
+              ipaddr:
+                type: string
+              macaddr:
+                type: string
+              podname:
+                type: string
+              podns:
+                type: string
+              vtep:
+                type: string
+            type: object
+        required:
+        - status
+        type: object
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: snatglobalinfos.aci.snat
+spec:
+  group: aci.snat
+  names:
+    kind: SnatGlobalInfo
+    listKind: SnatGlobalInfoList
+    plural: snatglobalinfos
+    singular: snatglobalinfo
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: SnatGlobalInfo is the Schema for the snatglobalinfos API
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              globalInfos:
+                additionalProperties:
+                  items:
+                    properties:
+                      macAddress:
+                        type: string
+                      portRanges:
+                        items:
+                          properties:
+                            end:
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                            start:
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                          type: object
+                        type: array
+                      snatIp:
+                        type: string
+                      snatIpUid:
+                        type: string
+                      snatPolicyName:
+                        type: string
+                    required:
+                    - macAddress
+                    - portRanges
+                    - snatIp
+                    - snatIpUid
+                    - snatPolicyName
+                    type: object
+                  type: array
+                type: object
+            required:
+            - globalInfos
+            type: object
+          status:
+            description: SnatGlobalInfoStatus defines the observed state of SnatGlobalInfo
+            type: object
+        type: object
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: snatlocalinfos.aci.snat
+spec:
+  group: aci.snat
+  names:
+    kind: SnatLocalInfo
+    listKind: SnatLocalInfoList
+    plural: snatlocalinfos
+    singular: snatlocalinfo
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SnatLocalInfoSpec defines the desired state of SnatLocalInfo
+            properties:
+              localInfos:
+                items:
+                  properties:
+                    podName:
+                      type: string
+                    podNamespace:
+                      type: string
+                    podUid:
+                      type: string
+                    snatPolicies:
+                      items:
+                        properties:
+                          destIp:
+                            items:
+                              type: string
+                            type: array
+                          name:
+                            type: string
+                          snatIp:
+                            type: string
+                        required:
+                        - destIp
+                        - name
+                        - snatIp
+                        type: object
+                      type: array
+                  required:
+                  - podName
+                  - podNamespace
+                  - podUid
+                  - snatPolicies
+                  type: object
+                type: array
+            required:
+            - localInfos
+            type: object
+        type: object
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: snatpolicies.aci.snat
+spec:
+  group: aci.snat
+  names:
+    kind: SnatPolicy
+    listKind: SnatPolicyList
+    plural: snatpolicies
+    singular: snatpolicy
+  scope: Cluster
+  versions:
+  - name: v1
+    served: true
+    storage: true
     subresources:
       status: {}
-    version: v1
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              selector:
+                type: object
+                properties:
+                  labels:
+                    type: object
+                    description: 'Selection of Pods'
+                    properties:
+                    additionalProperties:
+                      type: string
+                  namespace:
+                    type: string
+                type: object
+              snatIp:
+                type: array
+                items:
+                  type: string
+              destIp:
+                type: array
+                items:
+                  type: string
+            type: object
+          status:
+            type: object
+            properties:
+            additionalProperties:
+              type: string
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: nodeinfos.aci.snat
+spec:
+  group: aci.snat
+  names:
+    kind: NodeInfo
+    listKind: NodeInfoList
+    plural: nodeinfos
+    singular: nodeinfo
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              macaddress:
+                type: string
+              snatpolicynames:
+                additionalProperties:
+                  type: boolean
+                type: object
+            type: object
+          status:
+            description: NodeinfoStatus defines the observed state of Nodeinfo
+            type: object
+        type: object
+---
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: rdconfigs.aci.snat
@@ -70,61 +428,220 @@ spec:
     plural: rdconfigs
     singular: rdconfig
   scope: Namespaced
-  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              discoveredsubnets:
+                items:
+                  type: string
+                type: array
+              usersubnets:
+                items:
+                  type: string
+                type: array
+            required:
+            - usersubnets
+            type: object
+          status:
+            description: NodeinfoStatus defines the observed state of Nodeinfo
+            type: object
+        type: object
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: epgs.aci.aw
+  name: qospolicies.aci.qos
 spec:
-  group: aci.aw
+  group: aci.qos
   names:
-    kind: Epg
-    listKind: EpgList
-    plural: epgs
+    kind: QosPolicy
+    listKind: QosPolicyList
+    plural: qospolicies
+    singular: qospolicy
   scope: Namespaced
-  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          spec:
+            type: object
+            properties:
+              podSelector:
+                description: 'Selection of Pods'
+                type: object
+                properties:
+                  matchLabels:
+                    type: object
+                    description:
+              ingress:
+                type: object
+                properties:
+                  policing_rate:
+                    type: integer
+                    minimum: 0
+                  policing_burst:
+                    type: integer
+                    minimum: 0
+              egress:
+                type: object
+                properties:
+                  policing_rate:
+                    type: integer
+                    minimum: 0
+                  policing_burst:
+                    type: integer
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: contracts.aci.aw
+  name: netflowpolicies.aci.netflow
 spec:
-  group: aci.aw
+  group: aci.netflow
   names:
-    kind: Contract
-    listKind: ContractList
-    plural: contracts
-  scope: Namespaced
-  version: v1
+    kind: NetflowPolicy
+    listKind: NetflowPolicyList
+    plural: netflowpolicies
+    singular: netflowpolicy
+  scope: Cluster
+  versions:
+  - name: v1alpha
+    served: true
+    storage: true
+    schema:
+   # openAPIV3Schema is the schema for validating custom objects.
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          spec:
+            type: object
+            properties:
+              flowSamplingPolicy:
+                type: object
+                properties:
+                  destIp:
+                    type: string
+                  destPort:
+                    type: integer
+                    minimum: 0
+                    maximum: 65535
+                    default: 2055
+                  flowType:
+                    type: string
+                    enum:
+                      - netflow
+                      - ipfix
+                    default: netflow
+                  activeFlowTimeOut:
+                    type: integer
+                    minimum: 0
+                    maximum: 3600
+                    default: 60
+                  idleFlowTimeOut:
+                    type: integer
+                    minimum: 0
+                    maximum: 600
+                    default: 15
+                  samplingRate:
+                    type: integer
+                    minimum: 0
+                    maximum: 1000
+                    default: 0
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: podifs.aci.aw
+  name: erspanpolicies.aci.erspan
 spec:
-  group: aci.aw
+  group: aci.erspan
   names:
-    kind: PodIF
-    listKind: PodIFList
-    plural: podifs
-  scope: Namespaced
-  version: v1
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: gbpsstates.aci.aw
-spec:
-  group: aci.aw
-  names:
-    kind: GBPSState
-    listKind: GBPSStateList
-    plural: gbpsstates
-  scope: Namespaced
-  version: v1
-  subresources:
-    status: {}
+    kind: ErspanPolicy
+    listKind: ErspanPolicyList
+    plural: erspanpolicies
+    singular: erspanpolicy
+  scope: Cluster
+  versions:
+  - name: v1alpha
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          spec:
+            type: object
+            properties:
+              selector:
+                type: object
+                description: 'Selection of Pods'
+                properties:
+                  labels:
+                    type: object
+                    properties:
+                    additionalProperties:
+                      type: string
+                  namespace:
+                    type: string
+              source:
+                type: object
+                properties:
+                  adminState:
+                    description: Administrative state.
+                    default: start
+                    type: string
+                    enum:
+                      - start
+                      - stop
+                  direction:
+                    description: Direction of the packets to monitor.
+                    default: both
+                    type: string
+                    enum:
+                      - in
+                      - out
+                      - both
+              destination:
+                type: object
+                properties:
+                  destIP:
+                    description: Destination IP of the ERSPAN packet.
+                    type: string
+                    minimum: 0
+                  flowID:
+                    description: Unique flow ID of the ERSPAN packet.
+                    default: 1
+                    type: integer
+                    minimum: 1
+                    maximum: 1023
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -132,50 +649,33 @@ metadata:
   name: aci-containers-config
   namespace: kube-system
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
     network-plugin: aci-containers
 data:
   controller-config: |-
     {
+        "flavor": "k8s-overlay",
         "log-level": "debug",
-        "apic-hosts": [
-            "127.0.0.1"
-        ],
-        "apic-username": "kube",
-        "apic-private-key-path": "/usr/local/etc/aci-cert/user.key",
-        "apic-use-inst-tag": true,
-        "aci-prefix": "defaultTenant",
-        "aci-vmm-type": "Kubernetes",
-        "aci-vmm-domain": "defaultTenant",
-        "aci-vmm-controller": "defaultTenant",
-        "aci-policy-tenant": "defaultTenant",
-        "require-netpol-annot": false,
+        "apic-hosts": [],
         "lb-type": "None",
-        "aci-service-phys-dom": "defaultTenant-pdom",
-        "aci-service-encap": "vlan-1022",
-        "aci-service-monitor-interval": 0,
-        "aci-vrf-tenant": "defaultTenant",
-        "aci-l3out": "l3out-v1",
-        "aci-ext-networks": [
-            "l3out_v1_net"
-        ],
-        "aci-vrf": "overlay_vrf",
+        "aci-vrf-tenant": "kube",
+        "aci-vrf": "defaultVrf",
         "default-endpoint-group": {
-            "policy-space": "defaultTenant",
+            "policy-space": "kube",
             "name": "kubernetes|kube-default"
         },
         "namespace-default-endpoint-group": {
             "kube-system": {
-                "policy-space": "defaultTenant",
+                "policy-space": "kube",
                 "name": "kubernetes|kube-system"
-            }
-        },
+            }        },
         "service-ip-pool": [
             {
                 "end": "10.3.63.254",
                 "start": "10.3.56.2"
             }
         ],
+        "snat-contract-scope": "global",
         "static-service-ip-pool": [
             {
                 "end": "10.4.63.254",
@@ -184,8 +684,8 @@ data:
         ],
         "pod-ip-pool": [
             {
-                "end": "11.3.63.254",
-                "start": "11.3.56.2"
+                "end": "11.3.7.254",
+                "start": "11.3.0.2"
             }
         ],
         "pod-subnet-chunk-size": 32,
@@ -201,18 +701,19 @@ data:
     }
   host-agent-config: |-
     {
-        "ep-registry": "k8s",
+        "flavor": "k8s-overlay",
+        "app-profile": "kubernetes",
         "opflex-mode": "overlay",
         "log-level": "debug",
-        "aci-vmm-type": "Kubernetes",
-        "aci-vmm-domain": "kubedom",
-        "aci-vmm-controller": "kubedom",
-        "aci-prefix": "defaultTenant",
-        "aci-vrf": "overlay_vrf",
-        "aci-vrf-tenant": "defaultTenant",
-        "service-vlan": 1022,
+        "aci-snat-namespace": "kube-system",
+        "aci-prefix": "kube",
+        "aci-vrf": "defaultVrf",
+        "aci-vrf-tenant": "kube",
+        "pod-subnet": "11.3.0.1/21",
+        "node-subnet": "1.100.201.1/24",
         "encap-type": "vxlan",
-        "aci-infra-vlan": 4093,
+        "aci-infra-vlan": null,
+        "interface-mtu": 1400,
         "cni-netconfig": [
             {
                 "gateway": "11.3.0.1",
@@ -222,65 +723,50 @@ data:
                         "gw": "11.3.0.1"
                     }
                 ],
-                "subnet": "11.3.0.0/16"
+                "subnet": "11.3.0.0/21"
             }
         ],
         "default-endpoint-group": {
-            "policy-space": "defaultTenant",
+            "policy-space": "kube",
             "name": "kubernetes|kube-default"
         },
         "namespace-default-endpoint-group": {
             "kube-system": {
-                "policy-space": "defaultTenant",
+                "policy-space": "kube",
                 "name": "kubernetes|kube-system"
-            }
-        }
+            }        },
+        "enable-drop-log": true
     }
   opflex-agent-config: |-
     {
         "log": {
-            "level": "debug2"
+            "level": "debug"
         },
         "opflex": {
+            "notif" : { "enabled" : "false" }
+            ,"statistics" : { "mode" : "off" }
         }
     }
   gbp-server-config: |-
-    {
-        "grpc-log-level": "info",
-        "log-level": "info",
-        "aci-policy-tenant": "defaultTenant",
-        "aci-vrf": "overlay_vrf",
-        "pod-subnet": "11.3.0.1/16",
-        "push-json-file": false,
-        "apic": {
-            "kafka": {
-                "brokers": [
-                              "ut-kafka-0.ut-kafka-headless.default.svc.cluster.local:9092"
-                           ],
-                "client-key-path": "/certs/kafka-client.key",
-                "client-cert-path": "/certs/kafka-client.crt",
-                "ca-cert-path": "/certs/ca.crt",
-                "topic": "clusterA",
-                "username": "user",
-                "password": "bitnami",
-                "kafka-log-level": "debug"
-            },
-           "cloud-info": {
-                "cluster-name": "clusterA"
-            }
-        }
-    }
+   {
+        "aci-policy-tenant": "kube",
+        "aci-vrf": "defaultVrf",
+        "aci-vmm-domain": "kubernetes",
+        "pod-subnet": "11.3.0.1/21"
+   }
 ---
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: aci-user-cert
+  name: snat-operator-config
   namespace: kube-system
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
+    network-plugin: aci-containers
 data:
-  user.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUNkUUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQWw4d2dnSmJBZ0VBQW9HQkFNSHRUaUk2bUJGTm9PdXIKR2JkTXAxbEM3UnQxNnYxL1NUcWdIL0oxVkgvTjRFamVubWpickpzdUl0ZnhrY3BGci9mdVdYS0dBRlpPcnFRbQpLSFhJdVo2MklzME1zQ1k1NGdNMVRXU1NCT2FlSFk5eWtENno3QjEwS3dhRmkwVVBRYnVBaGl1SEdVOTNqY2dICktCWW5EUFp4Wm9BM1RPUXRBanNBWXY4NTljM0pBZ01CQUFFQ2dZQllLaTRDaThjRTN0a1JLNW1tWnZnU01jWWcKWE95MzBQMlc1S09CbEd3VktxRVVIL20rekZoZHVJem94ZyswK1JlMlRTdG5VSnFvb2w3dGk5ZUxMUFdOOHIxUAord1dOSytTS05xcTJXRTBZWnhiWTBabThqMFpxdTA3S2NWWmlTZ3EzUWt2M3NDRGJibFdrNm5QbVFIOGhiVnFVCkpCUVRQVDAzNTd2RjUwOWdEUUpCQU9Hbm0rTEdrL2lBOThleldnMFUzekN5aXQzdVh3ZjlhZ0gvQjRrV1Q1UU8KUFpuMzBEWGxzQ1BHdlhjUU45WjlsZnl5SW5rTndqRTE3OG1CZ0ljQ2pETUNRUURjQVcvRE10RWNhUFQrRmhFeAorQkxlMUxXZHFHVEp2ejBLbHh0THZMYmIyQ3hHckdDZ1VqU0xMYW1aemNnZ2FtRk5aVmwzbmo1MGRmV3VWSWwwCm53SVRBa0JRTFhPd0VnckZnMTJHOFcwUHROalF2citrdDJ2QXRRUVRqWUFwNzJsN0c4dzdodGZPTHJ4MUdjcDgKSWFFVmJ5MzV5WG1DTmFkSVFQZmdTMGxWcjB3TkFrQUNSYzJHd2E2aFVZQStZN0gzeHkxQ3VnWEtSQ1FPWlhoVwo5S3FtaEtPSzc5ZTlQeWljWDEwRmx3b3FlWks0cXdDb1VRUzBsS0RtaVJWcG9KdnU1WG1iQWtCMEJBaUZ0Vmd0Cm8ybDlDSklLSmFYSjFBNUhFalhXdnhkMnRML1h4ejh6SGlNVlorOWpIMjIzRmFlb1ljUVZqVUsxUkw5SVdHMnUKcThtSGRyd2tYVVpUCi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
-  user.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUI1akNDQVU4Q0FnUG9NQTBHQ1NxR1NJYjNEUUVCQlFVQU1Ec3hDekFKQmdOVkJBWVRBbFZUTVJZd0ZBWUQKVlFRS0RBMURhWE5qYnlCVGVYTjBaVzF6TVJRd0VnWURWUVFEREF0VmMyVnlJSFpyT0hOZk1UQWVGdzB4T0RFeQpNVGN3TWpNeU1qaGFGdzB5T0RFeU1UUXhORE15TWpoYU1Ec3hDekFKQmdOVkJBWVRBbFZUTVJZd0ZBWURWUVFLCkRBMURhWE5qYnlCVGVYTjBaVzF6TVJRd0VnWURWUVFEREF0VmMyVnlJSFpyT0hOZk1UQ0JuekFOQmdrcWhraUcKOXcwQkFRRUZBQU9CalFBd2dZa0NnWUVBd2UxT0lqcVlFVTJnNjZzWnQweW5XVUx0RzNYcS9YOUpPcUFmOG5WVQpmODNnU042ZWFOdXNteTRpMS9HUnlrV3Y5KzVaY29ZQVZrNnVwQ1lvZGNpNW5yWWl6UXl3SmpuaUF6Vk5aSklFCjVwNGRqM0tRUHJQc0hYUXJCb1dMUlE5QnU0Q0dLNGNaVDNlTnlBY29GaWNNOW5GbWdEZE01QzBDT3dCaS96bjEKemNrQ0F3RUFBVEFOQmdrcWhraUc5dzBCQVFVRkFBT0JnUUF1YjRFb1VlWExTNmV1NGN6eCtCVmJpdy90VWJCTQpIaS9mN3BBTWcvR28xUlMzbHF5aXYrNXhmVDd1RGVqbDhmR0Z1RWZPVExlYURrV3puL3VkN0I5N09SSzhyQXhLCjV4WmV4K2RKay9yRDFxSXRuVi9DZlJoZGRrT1lIRzVJc3pLbGt0dTFZcFBVdUNQQ1R2bG45YWFKOEppb2JVcTYKNjFLZFQyYXpraXcvWlE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    "start": "5000"
+    "end": "65000"
+    "ports-per-node": "3000"
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -288,7 +774,7 @@ metadata:
   name: aci-containers-controller
   namespace: kube-system
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -296,13 +782,13 @@ metadata:
   name: aci-containers-host-agent
   namespace: kube-system
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
     network-plugin: aci-containers
   name: aci-containers:controller
 rules:
@@ -315,11 +801,33 @@ rules:
   - pods/exec
   - endpoints
   - services
+  - events
+  - replicationcontrollers
+  verbs:
+  - list
+  - watch
+  - get
+  - patch
+  - create
+  - update
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - list
+  - watch
+  - get
+  - create
+  - update
+  - delete
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - customresourcedefinitions
   verbs:
   - '*'
-# - list
-# - watch
-# - get
 - apiGroups:
   - "networking.k8s.io"
   resources:
@@ -340,7 +848,6 @@ rules:
 - apiGroups:
   - "aci.aw"
   resources:
-  - podifs
   - gbpsstates
   - gbpsstates/status
   verbs:
@@ -350,11 +857,10 @@ rules:
   resources:
   - deployments
   - replicasets
+  - daemonsets
+  - statefulsets
   verbs:
   - '*'
-# - list
-# - watch
-# - get
 - apiGroups:
   - ""
   resources:
@@ -363,34 +869,91 @@ rules:
   - nodes
   - services/status
   verbs:
-# - update
   - '*'
+- apiGroups:
+  - "monitoring.coreos.com"
+  resources:
+  - servicemonitors
+  verbs:
+  - get
+  - create
 - apiGroups:
   - "aci.snat"
   resources:
+  - snatpolicies/finalizers
+  - snatpolicies/status
   - nodeinfos
-  - rdconfigs
   verbs:
+  - update
   - create
   - list
   - watch
   - get
+  - delete
 - apiGroups:
   - "aci.snat"
   resources:
-  - snatlocalinfos
   - snatglobalinfos
   - snatpolicies
+  - nodeinfos
+  - rdconfigs
   verbs:
   - list
   - watch
   - get
+  - create
+  - update
+  - delete
+- apiGroups:
+  - "aci.qos"
+  resources:
+  - qospolicies
+  verbs:
+  - list
+  - watch
+  - get
+  - create
+  - update
+  - delete
+  - patch
+- apiGroups:
+  - "aci.netflow"
+  resources:
+  - netflowpolicies
+  verbs:
+  - list
+  - watch
+  - get
+  - update
+- apiGroups:
+  - "aci.erspan"
+  resources:
+  - erspanpolicies
+  verbs:
+  - list
+  - watch
+  - get
+  - update
+- apiGroups:
+  - "aci.aw"
+  resources:
+  - podifs
+  verbs:
+  - '*'
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
     network-plugin: aci-containers
   name: aci-containers:host-agent
 rules:
@@ -407,11 +970,18 @@ rules:
   - list
   - watch
   - get
+  - update
 - apiGroups:
-  - "apps"
+  - ""
   resources:
-  - deployments
-  - replicasets
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - customresourcedefinitions
   verbs:
   - list
   - watch
@@ -432,32 +1002,63 @@ rules:
   - watch
   - get
 - apiGroups:
-  - "aci.snat"
+  - "apps"
   resources:
-  - nodeinfos
-  - rdconfigs
+  - deployments
+  - replicasets
   verbs:
-  - create
   - list
   - watch
   - get
 - apiGroups:
   - "aci.snat"
   resources:
-  - snatlocalinfos
-  - snatglobalinfos
   - snatpolicies
+  - snatglobalinfos
+  - rdconfigs
   verbs:
   - list
   - watch
   - get
+- apiGroups:
+  - "aci.qos"
+  resources:
+  - qospolicies
+  verbs:
+  - list
+  - watch
+  - get
+  - create
+  - update
+  - delete
+  - patch
+- apiGroups:
+  - "aci.snat"
+  resources:
+  - nodeinfos
+  - snatlocalinfos
+  verbs:
+  - create
+  - update
+  - list
+  - watch
+  - get
+  - delete
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: aci-containers:controller
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -472,7 +1073,7 @@ kind: ClusterRoleBinding
 metadata:
   name: aci-containers:host-agent
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -488,7 +1089,7 @@ metadata:
   name: aci-containers-host
   namespace: kube-system
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
     network-plugin: aci-containers
 spec:
   updateStrategy:
@@ -504,6 +1105,8 @@ spec:
         network-plugin: aci-containers
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9612"
     spec:
       hostNetwork: true
       hostPID: true
@@ -511,25 +1114,41 @@ spec:
       serviceAccountName: aci-containers-host-agent
       tolerations:
         - operator: Exists
-          effect: NoSchedule
-      containers:
-        - name: aci-containers-host
-          image: noiro/aci-containers-host:5.1.1.1.1ae238a
+      initContainers:
+        - name: cnideploy
+          image: 10.19.41.116:5000/noiro/cnideploy:kwai-test
           imagePullPolicy: Always
           securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - SYS_ADMIN
+          volumeMounts:
+            - name: cni-bin
+              mountPath: /mnt/cni-bin
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: aci-containers-host
+          image: 10.19.41.116:5000/noiro/aci-containers-host:kwai-test
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
             capabilities:
               add:
                 - SYS_ADMIN
                 - NET_ADMIN
+                - SYS_PTRACE
           env:
             - name: KUBERNETES_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: TENANT
-              value: "defaultTenant"
+              value: "kube"
+            - name: NODE_EPG
+              value: "kubernetes|kube-nodes"
             - name: OPFLEX_MODE
-              value: "overlay"
+              value: overlay
           volumeMounts:
             - name: cni-bin
               mountPath: /mnt/cni-bin
@@ -545,20 +1164,27 @@ spec:
               mountPath: /usr/local/etc/opflex-agent-ovs/base-conf.d
             - name: host-config-volume
               mountPath: /usr/local/etc/aci-containers/
+            - mountPath: /run/netns
+              name: host-run-netns
+              readOnly: true
+              mountPropagation: HostToContainer
           livenessProbe:
             httpGet:
               path: /status
               port: 8090
         - name: opflex-agent
-          image: noiro/opflex:5.1.1.1.1ae238a
+          env:
+            - name: REBOOT_WITH_OVS
+              value: "true"
+            - name: SSL_MODE
+              value: disabled
+          image: 10.19.41.116:5000/noiro/opflex:kwai-test
           imagePullPolicy: Always
           securityContext:
+            privileged: true
             capabilities:
               add:
                 - NET_ADMIN
-          env:
-            - name: SSL_MODE
-              value: disabled
           volumeMounts:
             - name: hostvar
               mountPath: /usr/local/var
@@ -571,7 +1197,7 @@ spec:
             - name: opflex-config-volume
               mountPath: /usr/local/etc/opflex-agent-ovs/conf.d
         - name: opflex-server
-          image: noiro/opflex-server:5.1.1.1.1ae238a
+          image: 10.19.41.116:5000/noiro/opflex-server:kwai-test
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -579,6 +1205,8 @@ spec:
                 - NET_ADMIN
           ports:
             - containerPort: 8009
+            - name: metrics
+              containerPort: 9632
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           volumeMounts:
@@ -586,20 +1214,6 @@ spec:
               mountPath: /usr/local/etc/opflex-server
             - name: hostvar
               mountPath: /usr/local/var
-#          args:
-#          - "--level=debug2"
-        - name: mcast-daemon
-          image: noiro/opflex:5.1.1.1.1ae238a
-          command: ["/bin/sh"]
-          args: ["/usr/local/bin/launch-mcastdaemon.sh"]
-          imagePullPolicy: Always
-          volumeMounts:
-            - name: hostvar
-              mountPath: /usr/local/var
-            - name: hostrun
-              mountPath: /run
-            - name: hostrun
-              mountPath: /usr/local/run
       restartPolicy: Always
       volumes:
         - name: cni-bin
@@ -630,6 +1244,9 @@ spec:
               - key: opflex-agent-config
                 path: local.conf
         - name: opflex-server-config-volume
+        - name: host-run-netns
+          hostPath:
+            path: /run/netns
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -637,7 +1254,7 @@ metadata:
   name: aci-containers-openvswitch
   namespace: kube-system
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
     network-plugin: aci-containers
 spec:
   updateStrategy:
@@ -660,12 +1277,16 @@ spec:
       serviceAccountName: aci-containers-host-agent
       tolerations:
         - operator: Exists
-          effect: NoSchedule
+      priorityClassName: system-cluster-critical
       containers:
         - name: aci-containers-openvswitch
-          image: noiro/openvswitch:5.1.1.1.1ae238a
+          image: 10.19.41.116:5000/noiro/openvswitch:kwai-test
           imagePullPolicy: Always
+          resources:
+            limits:
+              memory: "1Gi"
           securityContext:
+            privileged: true
             capabilities:
               add:
                 - NET_ADMIN
@@ -711,7 +1332,7 @@ metadata:
   name: aci-containers-controller
   namespace: kube-system
   labels:
-    aci-containers-config-version: "92fe5657-e0ee-499a-b8d0-855a9bfd8988"
+    aci-containers-config-version: "4e26d4a3-4072-4a63-bc8c-461c3409eab9"
     network-plugin: aci-containers
     name: aci-containers-controller
 spec:
@@ -737,43 +1358,35 @@ spec:
       tolerations:
         - operator: Exists
           effect: NoSchedule
+      priorityClassName: system-node-critical
       containers:
         - name: aci-gbpserver
           image: 10.19.41.116:5000/noiro/gbp-server:ci_test
           imagePullPolicy: Always
           volumeMounts:
-            - name: kubeconfig
-              mountPath: /kube
             - name: controller-config-volume
               mountPath: /usr/local/etc/aci-containers/
-            - name: kafka-certs
-              mountPath: /certs
           env:
             - name: GBP_SERVER_CONF
               value: /usr/local/etc/aci-containers/gbp-server.conf
-
         - name: aci-containers-controller
-          image: noiro/aci-containers-controller:5.1.1.1.1ae238a
+          image: 10.19.41.116:5000/noiro/aci-containers-controller:kwai-test
           imagePullPolicy: Always
+          env:
+            - name: ACI_SNAT_NAMESPACE
+              value: "kube-system"
+            - name: ACI_SNAGLOBALINFO_NAME
+              value: "snatglobalinfo"
+            - name: ACI_RDCONFIG_NAME
+              value: "routingdomain-config"
           volumeMounts:
             - name: controller-config-volume
               mountPath: /usr/local/etc/aci-containers/
-            - name: aci-user-cert-volume
-              mountPath: /usr/local/etc/aci-cert/
           livenessProbe:
             httpGet:
               path: /status
               port: 8091
       volumes:
-        - name: kubeconfig
-          hostPath:
-            path: /kubeconfig
-        - name: aci-user-cert-volume
-          secret:
-            secretName: aci-user-cert
-        - name: kafka-certs
-          secret:
-            secretName: kafka-client-certificates
         - name: controller-config-volume
           configMap:
             name: aci-containers-config
@@ -782,4 +1395,3 @@ spec:
                 path: controller.conf
               - key: gbp-server-config
                 path: gbp-server.conf
-      nodeName: test-master
